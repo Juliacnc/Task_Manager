@@ -96,3 +96,19 @@ class TestTaskManager:
         task = create_task("Persistée")
         all_tasks = get_tasks()
         assert any(t["title"] == "Persistée" for t in all_tasks)
+        
+        def test_delete_existing_task(self):
+        # Crée une tâche temporaire
+        task = create_task("Tâche temporaire")
+        task_id = task["id"]
+        tasks_before = get_tasks()
+        
+        delete_task(task_id)
+        tasks_after = get_tasks()
+
+        assert all(t["id"] != task_id for t in tasks_after)
+        assert len(tasks_after) == len(tasks_before) - 1
+
+    def test_delete_nonexistent_task_raises(self):
+        with pytest.raises(TaskValidationError, match="Task not found"):
+            delete_task(9999)  # ID fictif

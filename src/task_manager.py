@@ -1,5 +1,3 @@
-# task_manager.py - Logique métier du gestionnaire de tâches
-
 import json
 import os
 from typing import List, Dict
@@ -64,7 +62,6 @@ def create_task(title: str, description: str = "") -> Dict:
     title = title.strip()
     description = description.strip()
 
-    # Validations
     if not title:
         raise TaskValidationError("Title is required")
     if len(title) > 100:
@@ -87,3 +84,14 @@ def create_task(title: str, description: str = "") -> Dict:
     _save_tasks(tasks)
 
     return new_task
+
+
+def delete_task(task_id: int):
+    """Supprime définitivement une tâche existante par son ID"""
+    tasks = _load_tasks()
+    updated_tasks = [task for task in tasks if task["id"] != task_id]
+
+    if len(updated_tasks) == len(tasks):
+        raise TaskValidationError("Task not found")
+
+    _save_tasks(updated_tasks)

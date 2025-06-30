@@ -7,6 +7,7 @@ from rich.table import Table
 from task_manager import (
     get_tasks,
     create_task,
+    delete_task,
     TaskValidationError
 )
 
@@ -52,6 +53,16 @@ def create(title, description):
     try:
         task = create_task(title, description)
         console.print(f"Tâche créée avec succès (ID: {task['id']})", style="green")
+    except TaskValidationError as e:
+        console.print(f"Erreur : {e}", style="red")
+
+@cli.command()
+@click.argument("task_id", type=int)
+def delete(task_id):
+    """Supprime une tâche par son ID"""
+    try:
+        delete_task(task_id)
+        console.print(f"Tâche ID {task_id} supprimée avec succès.", style="green")
     except TaskValidationError as e:
         console.print(f"Erreur : {e}", style="red")
 
