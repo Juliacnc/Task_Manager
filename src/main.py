@@ -9,6 +9,7 @@ from task_manager import (
     create_task,
     TaskValidationError,
     get_task_by_id,
+    modify_task,
 )
 
 console = Console()
@@ -82,6 +83,56 @@ def show(task_id):
     table.add_row("Créée le", task["created_at"])
 
     console.print(table)
+
+
+@cli.command()
+@click.argument("task_id", type=int)
+@click.option("--title", default="", help="Titre à modifier")
+@click.option("--description", default="", help="Description à modifier")
+@click.option(
+    "--id",
+    default=None,
+    help="Modification du champ 'id' non autorisée",
+    required=False,
+)
+@click.option(
+    "--status",
+    default=None,
+    help="Modification du champ 'status' non autorisée",
+    required=False,
+)
+@click.option(
+    "--created_at",
+    default=None,
+    help="Modification du champ 'created_at' non autorisée",
+    required=False,
+)
+def modify(task_id, title, description, id, status, created_at):
+    """Modifier une tâche existante"""
+    forbidden_fields = []
+    if id is not None:
+        forbidden_fields.append("id")
+    if status is not None:
+        forbidden_fields.append("status")
+    if created_at is not None:
+        forbidden_fields.append("created_at")
+    if forbidden_fields:
+        console.print(
+            f"Erreur : Seuls les champs 'title' et 'description' "
+            f"peuvent être modifiés"
+            f"Champs non autorisés détectés : {', '.join(forbidden_fields)}",
+            style="red",
+        )
+        return
+    try:
+        task = modify_task(task_id, title, description)
+        console.print(
+            f"Tâche {task['id']} modifiée avec succès", style="green"
+        )
+    except ValueError as e:
+        console.print(f"Erreur : {e}", style="red")
+    except TaskValidationError as e:
+        console.print(f"Erreur de validation : {e}", style="red")
 
 
 if __name__ == "__main__":

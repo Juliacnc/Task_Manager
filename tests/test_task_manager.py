@@ -13,6 +13,7 @@ from src.task_manager import (
     TaskValidationError,
     _save_tasks,
     get_task_by_id,
+    modify_task,
 )
 
 
@@ -119,3 +120,58 @@ class TestTaskManager:
         task = create_task("Persistée")
         all_tasks = get_tasks()
         assert any(t["title"] == "Persistée" for t in all_tasks)
+
+    def test_modify_task_updates_title(self):
+        task = create_task("Tâche à modifier")
+        modified_task = modify_task(task["id"], title="Nouveau titre")
+        assert modified_task["title"] == "Nouveau titre"
+        assert modified_task["id"] == task["id"]
+
+    def test_modify_task_updates_description(self):
+        task = create_task("Tâche à modifier")
+        modified_task = modify_task(
+            task["id"], description="Nouvelle description"
+        )
+        assert modified_task["description"] == "Nouvelle description"
+        assert modified_task["id"] == task["id"]
+
+    def test_modify_task_updates_with_too_long_title(self):
+        task = create_task("Tâche à modifier")
+        long_title = "T" * 101
+        with pytest.raises(
+            TaskValidationError, match="Title cannot exceed 100 characters"
+        ):
+            modify_task(task["id"], title=long_title)
+
+    def test_modify_task_updates_with_too_long_description(self):
+        task = create_task("Tâche à modifier")
+        long_description = "D" * 501
+        with pytest.raises(
+            TaskValidationError,
+            match="Description cannot exceed 500 characters",
+        ):
+            modify_task(task["id"], description=long_description)
+
+    def test_modify_task_raise_error_for_invalid_id(self):
+        with pytest.raises(
+            ValueError, match="Tâche avec l'ID 999 non trouvée."
+        ):
+            modify_task(999, title="Nouveau titre")
+
+    def test_modify_task_raises_error_for_invalid_fields(self):
+        task = create_task("Tâche à modifier")
+        with pytest.raises(
+            TaskValidationError,
+            match="Seuls le titre et la description peuvent être modifiés.",
+        ):
+            modify_task(
+                task["id"],
+                id=12,
+                status="DONE",
+                created_at="2024-01-01T10:00:00",
+            )
+
+    def test_modify_task_error_if_title_empty(self):
+        task = create_task("Tâche à modifier")
+        with pytest.raises(TaskValidationError, match="Title is required"):
+            modify_task(task["id"], title="   ")

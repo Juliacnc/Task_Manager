@@ -96,3 +96,38 @@ def get_task_by_id(task_id: int) -> Dict:
         if task["id"] == task_id:
             return task
     raise ValueError(f"Tâche avec l'ID {task_id} non trouvée.")
+
+
+def modify_task(
+    task_id: int, title: str = None, description: str = None, **kwargs
+) -> Dict:
+    """Modifie une tâche existante.
+
+    Seuls les champs `title` et `description` peuvent être modifiés.
+    Les autres champs comme l'ID, le statut ou la date de création sont ignorés.
+    """
+    if kwargs:
+        raise TaskValidationError(
+            "Seuls le titre et la description peuvent être modifiés."
+        )
+    task_list = _load_tasks()
+    for task in task_list:
+        if task["id"] == task_id:
+            if title is not None:
+                task["title"] = title.strip()
+            if description is not None:
+                task["description"] = description.strip()
+
+            if not task["title"]:
+                raise TaskValidationError("Title is required")
+            if len(task["title"]) > 100:
+                raise TaskValidationError("Title cannot exceed 100 characters")
+            if len(task["description"]) > 500:
+                raise TaskValidationError(
+                    "Description cannot exceed 500 characters"
+                )
+
+            _save_tasks(task_list)
+            return task
+
+    raise ValueError(f"Tâche avec l'ID {task_id} non trouvée.")
