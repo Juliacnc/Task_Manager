@@ -13,20 +13,21 @@ DEFAULT_TASKS = [
         "title": "Première tâche",
         "description": "Description de la première tâche",
         "status": "TODO",
-        "created_at": "2024-01-01T10:00:00"
+        "created_at": "2024-01-01T10:00:00",
     },
     {
         "id": 2,
         "title": "Deuxième tâche",
         "description": "Description de la deuxième tâche",
         "status": "DONE",
-        "created_at": "2024-01-02T15:00:00"
-    }
+        "created_at": "2024-01-02T15:00:00",
+    },
 ]
 
 
 class TaskValidationError(Exception):
     """Exception personnalisée pour les erreurs de validation"""
+
     pass
 
 
@@ -34,7 +35,7 @@ def _load_tasks() -> List[Dict]:
     """Charge les tâches depuis le fichier JSON"""
     if os.path.exists(DATA_FILE):
         try:
-            with open(DATA_FILE, 'r', encoding='utf-8') as f:
+            with open(DATA_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
         except (json.JSONDecodeError, IOError):
             _save_tasks(DEFAULT_TASKS)
@@ -47,7 +48,7 @@ def _load_tasks() -> List[Dict]:
 def _save_tasks(tasks_to_save: List[Dict]):
     """Sauvegarde les tâches dans le fichier JSON"""
     try:
-        with open(DATA_FILE, 'w', encoding='utf-8') as f:
+        with open(DATA_FILE, "w", encoding="utf-8") as f:
             json.dump(tasks_to_save, f, ensure_ascii=False, indent=2)
     except IOError:
         pass
@@ -60,7 +61,6 @@ def get_tasks() -> List[Dict]:
 
 def create_task(title: str, description: str = "") -> Dict:
     """Crée une nouvelle tâche avec validation"""
-
     title = title.strip()
     description = description.strip()
 
@@ -80,10 +80,19 @@ def create_task(title: str, description: str = "") -> Dict:
         "title": title,
         "description": description,
         "status": "TODO",
-        "created_at": datetime.now().isoformat(timespec="seconds")
+        "created_at": datetime.now().isoformat(timespec="seconds"),
     }
 
     tasks.append(new_task)
     _save_tasks(tasks)
 
     return new_task
+
+
+def get_task_by_id(task_id: int) -> Dict:
+    """Récupère une tâche par son ID"""
+    task_list = _load_tasks()
+    for task in task_list:
+        if task["id"] == task_id:
+            return task
+    raise ValueError(f"Tâche avec l'ID {task_id} non trouvée.")

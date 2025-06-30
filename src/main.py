@@ -7,15 +7,18 @@ from rich.table import Table
 from task_manager import (
     get_tasks,
     create_task,
-    TaskValidationError
+    TaskValidationError,
+    get_task_by_id,
 )
 
 console = Console()
+
 
 @click.group()
 def cli():
     """Gestionnaire de Tâches - Version CLI Python"""
     pass
+
 
 @cli.command()
 def list():
@@ -36,26 +39,53 @@ def list():
     for task in tasks:
         table.add_row(
             str(task["id"]),
-            task['status'],
+            task["status"],
             task["title"],
             task["description"],
-            task["created_at"]
+            task["created_at"],
         )
 
     console.print(table)
 
+
 @cli.command()
-@click.option("--title", prompt="Titre", help="Titre de la tâche (obligatoire)")
-@click.option("--description", default="", help="Description de la tâche (optionnelle)")
+@click.option(
+    "--title", prompt="Titre", help="Titre de la tâche (obligatoire)"
+)
+@click.option(
+    "--description", default="", help="Description de la tâche (optionnelle)"
+)
 def create(title, description):
     """Créer une nouvelle tâche"""
     try:
         task = create_task(title, description)
-        console.print(f"Tâche créée avec succès (ID: {task['id']})", style="green")
+        console.print(
+            f"Tâche créée avec succès (ID: {task['id']})", style="green"
+        )
     except TaskValidationError as e:
         console.print(f"Erreur : {e}", style="red")
 
 
-if __name__ == '__main__':
-    console.print("Gestionnaire de Tâches - Version CLI Python\n", style="bold blue")
+@cli.command()
+@click.argument("task_id", type=int)
+def show(task_id):
+    """Afficher une tâche par son ID"""
+    task = get_task_by_id(task_id)
+    table = Table(title=f"Tâche {task['id']}")
+    table.add_column("Champ", style="cyan")
+    table.add_column("Valeur", style="white")
+
+    table.add_row("ID", str(task["id"]))
+    table.add_row("Statut", task["status"])
+    table.add_row("Titre", task["title"])
+    table.add_row("Description", task["description"])
+    table.add_row("Créée le", task["created_at"])
+
+    console.print(table)
+
+
+if __name__ == "__main__":
+    console.print(
+        "Gestionnaire de Tâches - Version CLI Python\n", style="bold blue"
+    )
     cli()
