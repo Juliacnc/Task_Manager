@@ -20,17 +20,3 @@ task_list = [
 def get_tasks() -> List[Dict]:
     """Récupère la liste des tâches"""
     return task_list
-
-
-def modify_task(
-    task_id: int, title: str, description: str, status: str
-) -> Dict:
-    """Modifie une tâche existante"""
-    for task in task_list:
-        if task["id"] == task_id:
-            task["title"] = title
-            task["description"] = description
-            task["status"] = status
-            return task
-
-    raise ValueError(f"Tâche avec l'ID {task_id} non trouvée.")
