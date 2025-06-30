@@ -31,6 +31,15 @@ class TaskValidationError(Exception):
     pass
 
 
+class TaskNotFoundError(Exception):
+    """Exception personnalisée pour tâche non trouvée"""
+
+    pass
+
+
+VALID_STATUSES = {"TODO", "ONGOING", "DONE"}
+
+
 def _load_tasks() -> List[Dict]:
     """Charge les tâches depuis le fichier JSON"""
     if os.path.exists(DATA_FILE):
@@ -64,7 +73,6 @@ def create_task(title: str, description: str = "") -> Dict:
     title = title.strip()
     description = description.strip()
 
-    # Validations
     if not title:
         raise TaskValidationError("Title is required")
     if len(title) > 100:
@@ -131,3 +139,20 @@ def modify_task(
             return task
 
     raise ValueError(f"Tâche avec l'ID {task_id} non trouvée.")
+
+
+def change_task_status(task_id: int, new_status: str) -> Dict:
+    """Change le statut d'une tâche existante"""
+    if new_status not in VALID_STATUSES:
+        raise TaskValidationError(
+            "Invalid status. Allowed values: TODO, ONGOING, DONE"
+        )
+
+    tasks = _load_tasks()
+    for task in tasks:
+        if task["id"] == task_id:
+            task["status"] = new_status
+            _save_tasks(tasks)
+            return task
+
+    raise TaskNotFoundError("Task not found")

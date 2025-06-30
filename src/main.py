@@ -7,9 +7,11 @@ from rich.table import Table
 from task_manager import (
     get_tasks,
     create_task,
+    change_task_status,
     TaskValidationError,
     get_task_by_id,
     modify_task,
+    TaskNotFoundError,
 )
 
 console = Console()
@@ -64,6 +66,25 @@ def create(title, description):
             f"Tâche créée avec succès (ID: {task['id']})", style="green"
         )
     except TaskValidationError as e:
+        console.print(f"Erreur : {e}", style="red")
+
+
+@cli.command()
+@click.argument("task_id", type=int)
+@click.argument(
+    "new_status",
+    type=click.Choice(["TODO", "ONGOING", "DONE"], case_sensitive=True),
+)
+def update_status(task_id, new_status):
+    """Changer le statut d'une tâche"""
+    try:
+        task = change_task_status(task_id, new_status)
+        console.print(
+            f"Tâche {task['id']} mise à jour avec le statut : [green]{task['status']}[/green]"
+        )
+    except TaskValidationError as e:
+        console.print(f"Erreur de validation : {e}", style="red")
+    except TaskNotFoundError as e:
         console.print(f"Erreur : {e}", style="red")
 
 

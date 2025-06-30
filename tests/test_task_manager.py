@@ -1,4 +1,5 @@
 # test_task_manager.py - Tests pour la logique métier
+
 import sys
 import os
 import pytest
@@ -6,10 +7,10 @@ from datetime import datetime
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-
 from src.task_manager import (
     get_tasks,
     create_task,
+    change_task_status,
     TaskValidationError,
     _save_tasks,
     get_task_by_id,
@@ -19,7 +20,6 @@ from src.task_manager import (
 
 class TestTaskManager:
     def setup_method(self):
-        # Réinitialisation manuelle des données
         self.initial_tasks = [
             {
                 "id": 1,
@@ -175,3 +175,22 @@ class TestTaskManager:
         task = create_task("Tâche à modifier")
         with pytest.raises(TaskValidationError, match="Title is required"):
             modify_task(task["id"], title="   ")
+
+    # --- Tests US004 (changer le statut) ---
+
+    def test_update_status_valid(self):
+        updated = change_task_status(1, "ONGOING")  # ✅ renommé ici
+        assert updated["status"] == "ONGOING"
+        tasks = get_tasks()
+        assert any(t["id"] == 1 and t["status"] == "ONGOING" for t in tasks)
+
+    def test_update_status_invalid_status(self):
+        with pytest.raises(
+            TaskValidationError,
+            match="Invalid status. Allowed values: TODO, ONGOING, DONE",
+        ):
+            change_task_status(1, "INVALID")  # ✅ renommé ici
+
+    def test_update_status_nonexistent_task(self):
+        with pytest.raises(Exception, match="Task not found"):
+            change_task_status(999, "TODO")  # ✅ renommé ici
