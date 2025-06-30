@@ -11,10 +11,12 @@ from task_manager import (
 
 console = Console()
 
+
 @click.group()
 def cli():
     """Gestionnaire de Tâches - Version CLI Python"""
     pass
+
 
 @cli.command()
 def list():
@@ -44,6 +46,7 @@ def list():
  
     except TaskValidationError as e:
         console.print(f"Erreur: {e}", style="red")
+
 
 if __name__ == '__main__':
     console.print("Gestionnaire de Tâches - Version CLI Python\n", style="bold blue")

@@ -16,6 +16,7 @@ task_list = [
     }
 ]
 
+
 def get_tasks() -> List[Dict]:
     """
     Récupère la liste des tâches
