@@ -1,5 +1,3 @@
-# task_manager.py - Logique métier du gestionnaire de tâches
-
 import json
 import os
 from typing import List, Dict
@@ -156,3 +154,14 @@ def change_task_status(task_id: int, new_status: str) -> Dict:
             return task
 
     raise TaskNotFoundError("Task not found")
+
+
+def delete_task(task_id: int):
+    """Supprime définitivement une tâche existante par son ID"""
+    tasks = _load_tasks()
+    updated_tasks = [task for task in tasks if task["id"] != task_id]
+
+    if len(updated_tasks) == len(tasks):
+        raise TaskValidationError("Task not found")
+
+    _save_tasks(updated_tasks)

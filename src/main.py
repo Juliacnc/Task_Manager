@@ -8,6 +8,7 @@ from task_manager import (
     get_tasks,
     create_task,
     change_task_status,
+    delete_task,
     TaskValidationError,
     get_task_by_id,
     modify_task,
@@ -64,6 +65,32 @@ def create(title, description):
         task = create_task(title, description)
         console.print(
             f"Tâche créée avec succès (ID: {task['id']})", style="green"
+        )
+    except TaskValidationError as e:
+        console.print(f"Erreur : {e}", style="red")
+
+
+@cli.command()
+@click.argument("task_id", type=int)
+def delete(task_id):
+    """Supprime une tâche par son ID"""
+    try:
+        delete_task(task_id)
+        console.print(
+            f"Tâche ID {task_id} supprimée avec succès.", style="green"
+        )
+    except TaskValidationError as e:
+        console.print(f"Erreur : {e}", style="red")
+
+
+@cli.command()
+@click.argument("task_id", type=int)
+def delete(task_id):
+    """Supprime une tâche par son ID"""
+    try:
+        delete_task(task_id)
+        console.print(
+            f"Tâche ID {task_id} supprimée avec succès.", style="green"
         )
     except TaskValidationError as e:
         console.print(f"Erreur : {e}", style="red")

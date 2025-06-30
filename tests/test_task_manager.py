@@ -15,6 +15,7 @@ from src.task_manager import (
     _save_tasks,
     get_task_by_id,
     modify_task,
+    delete_task,
 )
 
 
@@ -194,3 +195,19 @@ class TestTaskManager:
     def test_update_status_nonexistent_task(self):
         with pytest.raises(Exception, match="Task not found"):
             change_task_status(999, "TODO")  # ✅ renommé ici
+
+    def test_delete_existing_task(self):
+        # Crée une tâche temporaire
+        task = create_task("Tâche temporaire")
+        task_id = task["id"]
+        tasks_before = get_tasks()
+
+        delete_task(task_id)
+        tasks_after = get_tasks()
+
+        assert all(t["id"] != task_id for t in tasks_after)
+        assert len(tasks_after) == len(tasks_before) - 1
+
+    def test_delete_nonexistent_task_raises(self):
+        with pytest.raises(TaskValidationError, match="Task not found"):
+            delete_task(9999)  # ID fictif
