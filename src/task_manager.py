@@ -24,11 +24,15 @@ DEFAULT_TASKS = [
     }
 ]
 
-
 class TaskValidationError(Exception):
     """Exception personnalisée pour les erreurs de validation"""
     pass
 
+class TaskNotFoundError(Exception):
+    """Exception personnalisée pour tâche non trouvée"""
+    pass
+
+VALID_STATUSES = {"TODO", "ONGOING", "DONE"}
 
 def _load_tasks() -> List[Dict]:
     """Charge les tâches depuis le fichier JSON"""
@@ -43,7 +47,6 @@ def _load_tasks() -> List[Dict]:
         _save_tasks(DEFAULT_TASKS)
         return DEFAULT_TASKS.copy()
 
-
 def _save_tasks(tasks_to_save: List[Dict]):
     """Sauvegarde les tâches dans le fichier JSON"""
     try:
@@ -52,19 +55,15 @@ def _save_tasks(tasks_to_save: List[Dict]):
     except IOError:
         pass
 
-
 def get_tasks() -> List[Dict]:
     """Récupère la liste des tâches"""
     return _load_tasks()
 
-
 def create_task(title: str, description: str = "") -> Dict:
     """Crée une nouvelle tâche avec validation"""
-
     title = title.strip()
     description = description.strip()
 
-    # Validations
     if not title:
         raise TaskValidationError("Title is required")
     if len(title) > 100:
@@ -87,3 +86,19 @@ def create_task(title: str, description: str = "") -> Dict:
     _save_tasks(tasks)
 
     return new_task
+
+
+def change_task_status(task_id: int, new_status: str) -> Dict:
+    """Change le statut d'une tâche existante"""
+
+    if new_status not in VALID_STATUSES:
+        raise TaskValidationError("Invalid status. Allowed values: TODO, ONGOING, DONE")
+
+    tasks = _load_tasks()
+    for task in tasks:
+        if task["id"] == task_id:
+            task["status"] = new_status
+            _save_tasks(tasks)
+            return task
+
+    raise TaskNotFoundError("Task not found")

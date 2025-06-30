@@ -7,15 +7,19 @@ from rich.table import Table
 from task_manager import (
     get_tasks,
     create_task,
-    TaskValidationError
+    change_task_status,
+    TaskValidationError,
+    TaskNotFoundError
 )
 
 console = Console()
+
 
 @click.group()
 def cli():
     """Gestionnaire de Tâches - Version CLI Python"""
     pass
+
 
 @cli.command()
 def list():
@@ -44,6 +48,7 @@ def list():
 
     console.print(table)
 
+
 @cli.command()
 @click.option("--title", prompt="Titre", help="Titre de la tâche (obligatoire)")
 @click.option("--description", default="", help="Description de la tâche (optionnelle)")
@@ -53,6 +58,20 @@ def create(title, description):
         task = create_task(title, description)
         console.print(f"Tâche créée avec succès (ID: {task['id']})", style="green")
     except TaskValidationError as e:
+        console.print(f"Erreur : {e}", style="red")
+
+
+@cli.command()
+@click.argument("task_id", type=int)
+@click.argument("new_status", type=click.Choice(["TODO", "ONGOING", "DONE"], case_sensitive=True))
+def update_status(task_id, new_status):
+    """Changer le statut d'une tâche"""
+    try:
+        task = change_task_status(task_id, new_status)
+        console.print(f"Tâche {task['id']} mise à jour avec le statut : [green]{task['status']}[/green]")
+    except TaskValidationError as e:
+        console.print(f"Erreur de validation : {e}", style="red")
+    except TaskNotFoundError as e:
         console.print(f"Erreur : {e}", style="red")
 
 
