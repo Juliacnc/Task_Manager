@@ -4,7 +4,7 @@ import os
 import pytest
 from datetime import datetime
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
 from src.task_manager import (
@@ -12,12 +12,11 @@ from src.task_manager import (
     create_task,
     TaskValidationError,
     _save_tasks,
-    _load_tasks
+    get_task_by_id,
 )
 
 
 class TestTaskManager:
-
     def setup_method(self):
         # Réinitialisation manuelle des données
         self.initial_tasks = [
@@ -26,15 +25,15 @@ class TestTaskManager:
                 "title": "Première tâche",
                 "description": "Description de la première tâche",
                 "status": "TODO",
-                "created_at": "2024-01-01T10:00:00"
+                "created_at": "2024-01-01T10:00:00",
             },
             {
                 "id": 2,
                 "title": "Deuxième tâche",
                 "description": "Description de la deuxième tâche",
                 "status": "DONE",
-                "created_at": "2024-01-02T15:00:00"
-            }
+                "created_at": "2024-01-02T15:00:00",
+            },
         ]
         _save_tasks(self.initial_tasks)
 
@@ -48,7 +47,26 @@ class TestTaskManager:
 
     def test_get_tasks_returns_correct_structure(self):
         tasks = get_tasks()
-        assert all(key in tasks[0] for key in ["id", "title", "description", "status", "created_at"])
+        assert "id" in tasks[0]
+        assert "title" in tasks[0]
+        assert "description" in tasks[0]
+        assert "status" in tasks[0]
+
+    def test_get_task_by_id_returns_correct_task(self):
+        """Test que get_task_by_id retourne la tâche correcte"""
+        task = get_task_by_id(1)
+
+        assert task["id"] == 1
+        assert task["title"] == "Première tâche"
+        assert task["description"] == "Description de la première tâche"
+        assert task["status"] == "TODO"
+
+    def test_get_task_by_id_raises_error_for_invalid_id(self):
+        """Test que get_task_by_id lève une erreur pour un ID invalide"""
+        try:
+            get_task_by_id(999)
+        except ValueError as e:
+            assert str(e) == "Tâche avec l'ID 999 non trouvée."
 
     def test_create_task_with_valid_title_only(self):
         task = create_task("Nouvelle tâche")
@@ -73,12 +91,17 @@ class TestTaskManager:
 
     def test_create_task_raises_if_title_too_long(self):
         long_title = "T" * 101
-        with pytest.raises(TaskValidationError, match="Title cannot exceed 100 characters"):
+        with pytest.raises(
+            TaskValidationError, match="Title cannot exceed 100 characters"
+        ):
             create_task(long_title)
 
     def test_create_task_raises_if_description_too_long(self):
         long_desc = "D" * 501
-        with pytest.raises(TaskValidationError, match="Description cannot exceed 500 characters"):
+        with pytest.raises(
+            TaskValidationError,
+            match="Description cannot exceed 500 characters",
+        ):
             create_task("Titre valide", long_desc)
 
     def test_created_at_is_precise_to_second(self):
