@@ -19,6 +19,7 @@ from src.task_manager import (
     modify_task,
     delete_task,
     search_tasks,
+    filter_tasks_by_status,
 )
 
 
@@ -388,3 +389,106 @@ class TestSearchTasks:
             "courses", page=10, size=2, tasks_list=self.tasks
         )
         assert results == []
+
+
+class TestFilterTasksByStatus:
+    def setup_method(self):
+        self.tasks = [
+            {
+                "id": 1,
+                "title": "Tâche 1",
+                "description": "",
+                "status": "TODO",
+                "created_at": "2024-01-01T10:00:00",
+            },
+            {
+                "id": 2,
+                "title": "Tâche 2",
+                "description": "",
+                "status": "DONE",
+                "created_at": "2024-01-02T10:00:00",
+            },
+            {
+                "id": 3,
+                "title": "Tâche 3",
+                "description": "",
+                "status": "TODO",
+                "created_at": "2024-01-03T10:00:00",
+            },
+            {
+                "id": 4,
+                "title": "Tâche 4",
+                "description": "",
+                "status": "ONGOING",
+                "created_at": "2024-01-04T10:00:00",
+            },
+            {
+                "id": 5,
+                "title": "Tâche 5",
+                "description": "",
+                "status": "TODO",
+                "created_at": "2024-01-05T10:00:00",
+            },
+            {
+                "id": 6,
+                "title": "Tâche 6",
+                "description": "",
+                "status": "TODO",
+                "created_at": "2024-01-06T10:00:00",
+            },
+        ]
+
+    @patch("src.task_manager.get_tasks")
+    def test_filter_tasks_by_status_valid(self, mock_get_tasks):
+        filtered = [t for t in self.tasks if t["status"] == "TODO"]
+        mock_get_tasks.return_value = (filtered, len(filtered), 1)
+
+        tasks, total, total_pages = filter_tasks_by_status(
+            "TODO", tasks_list=self.tasks, page=1, size=10
+        )
+
+        assert all(t["status"] == "TODO" for t in tasks)
+        assert total == len(filtered)
+        assert total_pages == 1
+
+    @patch("src.task_manager.get_tasks")
+    def test_filter_tasks_by_status_empty_result(self, mock_get_tasks):
+        mock_get_tasks.return_value = ([], 0, 0)
+
+        tasks, total, total_pages = filter_tasks_by_status(
+            "ONGOING",
+            tasks_list=[t for t in self.tasks if t["status"] != "ONGOING"],
+            page=1,
+            size=10,
+        )
+
+        assert tasks == []
+        assert total == 0
+        assert total_pages == 0
+
+    def test_filter_tasks_by_status_invalid_status(self):
+        with pytest.raises(ValueError, match="Invalid filter status"):
+            filter_tasks_by_status(
+                "INVALID_STATUS", tasks_list=self.tasks, page=1, size=10
+            )
+
+    @patch("src.task_manager.get_tasks")
+    def test_filter_tasks_by_status_pagination(self, mock_get_tasks):
+        todos = [t for t in self.tasks if t["status"] == "TODO"]
+
+        # Simuler la pagination en 2 pages de 2 tâches
+        mock_get_tasks.side_effect = [
+            (todos[:2], len(todos), 2),  # Page 1
+            (todos[2:], len(todos), 2),  # Page 2
+        ]
+
+        tasks_page_1, total, total_pages = filter_tasks_by_status(
+            "TODO", tasks_list=self.tasks, page=1, size=2
+        )
+        tasks_page_2, _, _ = filter_tasks_by_status(
+            "TODO", tasks_list=self.tasks, page=2, size=2
+        )
+
+        assert tasks_page_1 != tasks_page_2
+        assert total == len(todos)
+        assert total_pages == 2

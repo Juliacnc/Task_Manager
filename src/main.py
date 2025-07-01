@@ -6,6 +6,7 @@ from rich.table import Table
 
 from task_manager import (
     get_tasks,
+    filter_tasks_by_status,
     create_task,
     change_task_status,
     delete_task,
@@ -63,6 +64,53 @@ def list(page, size):
         f"Page {page} sur {total_pages} - Total de tâches : {total_tasks}",
         style="bold",
     )
+
+    console.print(table)
+
+
+@click.option(
+    "--status",
+    required=True,
+    type=click.Choice(["TODO", "ONGOING", "DONE"], case_sensitive=True),
+)
+@click.option("--page", default=1, help="Numéro de page (commence à 1)")
+@click.option("--size", default=10, help="Nombre de tâches par page")
+@cli.command()
+def filter(status, page, size, tasks_list=tasks_list):
+    """Lister les tâches filtrées par statut"""
+    try:
+        tasks, total_tasks, total_pages = filter_tasks_by_status(
+            status=status, page=page, size=size, tasks_list=tasks_list
+        )
+    except ValueError as e:
+        console.print(f"Erreur : {e}", style="red")
+        return
+
+    if not tasks:
+        console.print(
+            f"Aucune tâche avec le statut '{status}' trouvée.", style="yellow"
+        )
+        return
+
+    table = Table(title=f"Tâches avec statut '{status}'")
+    table.add_column("ID", style="cyan", no_wrap=True)
+    table.add_column("Statut", style="green")
+    table.add_column("Titre", style="white")
+    table.add_column("Description", style="dim")
+    table.add_column("Créée le", style="magenta")
+
+    for task in tasks:
+        table.add_row(
+            str(task["id"]),
+            task["status"],
+            task["title"],
+            task["description"],
+            task["created_at"],
+        )
+    console.print(
+        f"Page {page}/{total_pages} - Total de tâches : {total_tasks}"
+    )
+    console.print(table)
 
 
 @cli.command()

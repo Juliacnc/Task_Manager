@@ -1,6 +1,6 @@
 import json
 import os
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from datetime import datetime
 
 DATA_FILE = "tasks.json"
@@ -84,6 +84,32 @@ def get_tasks(
     start = (page - 1) * size
     end = start + size
     return tasks_list[start:end], total_tasks, total_pages
+
+
+def filter_tasks_by_status(
+    status: str,
+    tasks_list: List[Dict],
+    page: int = 1,
+    size: int = 20,
+) -> Tuple[List[Dict], int, int]:
+    """Filtre les tâches par statut avec pagination.
+
+    :param status: Le statut à filtrer ("TODO", "ONGOING", "DONE")
+    :param page: Numéro de la page (1-based)
+    :param size: Nombre de tâches par page
+    :param data_file: Fichier de données JSON
+    :return: (liste des tâches filtrées pour la page, total de tâches filtrées, total de pages)
+    """
+    status = status.upper()
+    if status not in VALID_STATUSES:
+        raise ValueError("Invalid filter status")
+
+    filtered_tasks = [task for task in tasks_list if task["status"] == status]
+
+    task_range, total_tasks, total_pages = get_tasks(
+        page=page, size=size, tasks_list=filtered_tasks
+    )
+    return task_range, total_tasks, total_pages
 
 
 def create_task(
