@@ -13,6 +13,7 @@ from task_manager import (
     get_task_by_id,
     modify_task,
     TaskNotFoundError,
+    _load_tasks,
 )
 
 console = Console()
@@ -29,7 +30,10 @@ def cli():
 @cli.command()
 def list(page, size):
     """Lister les tâches"""
-    tasks, total_tasks, total_pages = get_tasks(page=page, size=size)
+    tasks_list = _load_tasks(data_file="tasks.json")
+    tasks, total_tasks, total_pages = get_tasks(
+        page=page, size=size, tasks_list=tasks_list
+    )
 
     if not tasks:
         console.print("Aucune tâche trouvée.", style="yellow")

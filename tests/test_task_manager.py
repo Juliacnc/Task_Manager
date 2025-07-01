@@ -300,16 +300,36 @@ class TestTaskManager:
             delete_task(9999, data_file="tests/data/test_delete_tasks.json")
 
     def test_get_tasks_returns_only_ten_tasks_page_one(self):
+        tasks_list = [
+            {
+                "id": i,
+                "title": f"Task {i}",
+                "description": "",
+                "status": "TODO",
+                "created_at": "2024-01-01T10:00:00",
+            }
+            for i in range(1, 31)
+        ]
         tasks, total_tasks, total_pages = get_tasks(
-            page=1, size=10, data_file="tests/data/test_pagination.json"
+            page=1, size=10, tasks_list=tasks_list
         )
         assert len(tasks) == 10
         assert total_tasks == 30
         assert total_pages == 3
 
     def test_get_tasks_returns_correct_page_two(self):
+        tasks_list = [
+            {
+                "id": i,
+                "title": f"Task {i}",
+                "description": "",
+                "status": "TODO",
+                "created_at": "2024-01-01T10:00:00",
+            }
+            for i in range(1, 31)
+        ]
         tasks, total_tasks, total_pages = get_tasks(
-            page=2, size=10, data_file="tests/data/test_pagination.json"
+            page=2, size=10, tasks_list=tasks_list
         )
         assert len(tasks) == 10
         assert total_tasks == 30
@@ -317,28 +337,23 @@ class TestTaskManager:
 
     def test_get_tasks_should_raise_error_for_negative_page(self):
         with pytest.raises(ValueError, match="Invalid page size"):
-            get_tasks(
-                page=-1, size=10, data_file="tests/data/test_pagination.json"
-            )
+            get_tasks(page=-1, size=10, tasks_list=self.initial_tasks)
 
     def test_get_tasks_should_raise_error_for_zero_page(self):
         with pytest.raises(ValueError, match="Invalid page size"):
-            get_tasks(
-                page=0, size=10, data_file="tests/data/test_pagination.json"
-            )
+            get_tasks(page=0, size=10, tasks_list=self.initial_tasks)
 
-    def test_get_tasks_should_return_empty_list_for_too_page(self, capsys):
-        result = get_tasks(
-            page=5, size=10, data_file="tests/data/test_pagination.json"
-        )
-        assert result == ([], 30, 3)
+    def test_get_tasks_should_return_empty_list_for_too_much_page(
+        self, capsys
+    ):
+        result = get_tasks(page=5, size=10, tasks_list=self.initial_tasks)
+        assert result == ([], 2, 1)
         captured = capsys.readouterr()
-        assert "Page 5 n'existe pas. Total de pages: 3" in captured.out
+        assert "Page 5 n'existe pas. Total de pages: 1" in captured.out
 
     def test_get_tasks_should_return_empty_list_for_empty_file(self, capsys):
-        result = get_tasks(
-            data_file="tests/data/test_empty_tasks_pagination.json"
-        )
+        tasks_list = []
+        result = get_tasks(tasks_list=tasks_list)
         assert result == ([], 0, 0)
         captured = capsys.readouterr()
         assert "Total de tâches: 0" in captured.out
