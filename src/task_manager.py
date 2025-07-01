@@ -40,16 +40,17 @@ VALID_STATUSES = {"TODO", "ONGOING", "DONE"}
 
 def _load_tasks(data_file=DATA_FILE) -> List[Dict]:
     """Charge les tâches depuis le fichier JSON"""
+    print(os.path.exists(data_file))
     if os.path.exists(data_file):
-        try:
-            with open(data_file, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except (json.JSONDecodeError, IOError):
-            _save_tasks(DEFAULT_TASKS)
-            return DEFAULT_TASKS.copy()
-    else:
-        _save_tasks(DEFAULT_TASKS)
-        return DEFAULT_TASKS.copy()
+        # try:
+        with open(data_file, "r", encoding="utf-8") as f:
+            return json.load(f)
+    # except (json.JSONDecodeError, IOError):
+    #     _save_tasks(DEFAULT_TASKS)
+    #     return DEFAULT_TASKS.copy()
+    # else:
+    #     _save_tasks(DEFAULT_TASKS)
+    #     return DEFAULT_TASKS.copy()
 
 
 def _save_tasks(tasks_to_save: List[Dict], data_file=DATA_FILE):
@@ -62,14 +63,14 @@ def _save_tasks(tasks_to_save: List[Dict], data_file=DATA_FILE):
 
 
 def get_tasks(
-    page: int = 1, size: int = 20, data_file=DATA_FILE
+    page: int = 1, size: int = 20, tasks_list: List[Dict] = None
 ) -> List[Dict]:
     """Récupère la liste des tâches"""
-    tasks = _load_tasks(data_file=data_file)
-    total_tasks = len(tasks)
+    # tasks = _load_tasks(data_file=data_file)
+    total_tasks = len(tasks_list)
     total_pages = (total_tasks + size - 1) // size if size else 1
 
-    if not tasks:
+    if not tasks_list:
         print("Total de tâches: {}".format(total_tasks))
         print("Total de pages: {}".format(total_pages))
         return [], total_tasks, total_pages
@@ -82,7 +83,7 @@ def get_tasks(
 
     start = (page - 1) * size
     end = start + size
-    return tasks[start:end], total_tasks, total_pages
+    return tasks_list[start:end], total_tasks, total_pages
 
 
 def create_task(
@@ -189,25 +190,18 @@ def delete_task(task_id: int, tasks_list: List[Dict]):
     return updated_tasks
 
 
-def search_tasks(keyword, page=1, size=10, data_file=DATA_FILE):
-    tasks = _load_tasks(data_file)
+def search_tasks(keyword, tasks_list, page=1, size=10) -> List[Dict]:
     keyword = keyword.strip().lower()
     if keyword:
         filtered = [
             t
-            for t in tasks
+            for t in tasks_list
             if keyword in t["title"].lower()
             or keyword in t["description"].lower()
         ]
     else:
-        filtered = tasks
-    total_tasks = len(filtered)
-    total_pages = (total_tasks + size - 1) // size if total_tasks > 0 else 0
-    if page < 1 or size < 1:
-        raise ValueError("Invalid page size")
-    if page > total_pages and total_pages != 0:
-        print(f"Page {page} n'existe pas. Total de pages: {total_pages}")
-        return [], total_tasks, total_pages
-    start = (page - 1) * size
-    end = start + size
-    return filtered[start:end], total_tasks, total_pages
+        filtered = tasks_list
+    task_range, total_tasks, total_pages = get_tasks(
+        page=page, size=size, tasks_list=filtered
+    )
+    return task_range, total_tasks, total_pages

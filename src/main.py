@@ -15,6 +15,7 @@ from task_manager import (
     TaskNotFoundError,
     search_tasks,  # <-- ajout de la fonction search_tasks
     _save_tasks,
+    _load_tasks,
 )
 
 console = Console()
@@ -205,11 +206,13 @@ def modify(
 @cli.command()
 @click.argument("keyword", type=str)
 @click.option("--page", default=1, help="Numéro de page (commence à 1)")
-@click.option("--size", default=10, help="Nombre de tâches par page")
-def search(keyword, page, size):
+@click.option("--size", default=20, help="Nombre de tâches par page")
+def search(keyword, page, size, tasks_list=tasks_list):
     """Rechercher des tâches par mot clé dans le titre ou la description"""
     try:
-        tasks, total, total_pages = search_tasks(keyword, page=page, size=size)
+        tasks, total, total_pages = search_tasks(
+            keyword, page=page, size=size, tasks_list=tasks_list
+        )
     except ValueError as e:
         console.print(f"Erreur : {e}", style="red")
         return
