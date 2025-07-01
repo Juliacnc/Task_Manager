@@ -40,16 +40,17 @@ VALID_STATUSES = {"TODO", "ONGOING", "DONE"}
 
 def _load_tasks(data_file=DATA_FILE) -> List[Dict]:
     """Charge les tâches depuis le fichier JSON"""
+    print(os.path.exists(data_file))
     if os.path.exists(data_file):
-        try:
-            with open(data_file, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except (json.JSONDecodeError, IOError):
-            _save_tasks(DEFAULT_TASKS)
-            return DEFAULT_TASKS.copy()
-    else:
-        _save_tasks(DEFAULT_TASKS)
-        return DEFAULT_TASKS.copy()
+        # try:
+        with open(data_file, "r", encoding="utf-8") as f:
+            return json.load(f)
+    # except (json.JSONDecodeError, IOError):
+    #     _save_tasks(DEFAULT_TASKS)
+    #     return DEFAULT_TASKS.copy()
+    # else:
+    #     _save_tasks(DEFAULT_TASKS)
+    #     return DEFAULT_TASKS.copy()
 
 
 def _save_tasks(tasks_to_save: List[Dict], data_file=DATA_FILE):
@@ -187,3 +188,20 @@ def delete_task(task_id: int, tasks_list: List[Dict]):
         raise TaskValidationError("Task not found")
 
     return updated_tasks
+
+
+def search_tasks(keyword, tasks_list, page=1, size=10) -> List[Dict]:
+    keyword = keyword.strip().lower()
+    if keyword:
+        filtered = [
+            t
+            for t in tasks_list
+            if keyword in t["title"].lower()
+            or keyword in t["description"].lower()
+        ]
+    else:
+        filtered = tasks_list
+    task_range, total_tasks, total_pages = get_tasks(
+        page=page, size=size, tasks_list=filtered
+    )
+    return task_range, total_tasks, total_pages

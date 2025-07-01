@@ -3,6 +3,7 @@
 import sys
 import os
 import pytest
+from unittest.mock import patch
 from datetime import datetime
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -17,6 +18,7 @@ from src.task_manager import (
     get_task_by_id,
     modify_task,
     delete_task,
+    search_tasks,
 )
 
 
@@ -274,3 +276,115 @@ class TestTaskManager:
         captured = capsys.readouterr()
         assert "Total de tâches: 0" in captured.out
         assert "Total de pages: 0" in captured.out
+
+
+class TestSearchTasks:
+    def setup_method(self):
+        self.tasks = [
+            {
+                "id": 1,
+                "title": "Faire les courses",
+                "description": "Acheter du lait",
+                "status": "TODO",
+                "created_at": "2024-01-01T10:00:00",
+            },
+            {
+                "id": 2,
+                "title": "Appeler le docteur",
+                "description": "Rendez-vous lundi",
+                "status": "DONE",
+                "created_at": "2024-01-02T10:00:00",
+            },
+            {
+                "id": 3,
+                "title": "Faire le ménage",
+                "description": "Passer l'aspirateur",
+                "status": "TODO",
+                "created_at": "2024-01-03T10:00:00",
+            },
+            {
+                "id": 4,
+                "title": "Courses de Noël",
+                "description": "Acheter des cadeaux",
+                "status": "ONGOING",
+                "created_at": "2024-01-04T10:00:00",
+            },
+            {
+                "id": 5,
+                "title": "Finir projet",
+                "description": "Rendu avant la fin du mois",
+                "status": "TODO",
+                "created_at": "2024-01-05T10:00:00",
+            },
+        ]
+
+    @patch("src.task_manager.get_tasks")
+    def test_search_by_title(self, mock_get_tasks):
+        filtered = [
+            t
+            for t in self.tasks
+            if "courses" in t["title"].lower()
+            or "courses" in t["description"].lower()
+        ]
+        # Vérif utile (tu peux aussi l'enlever une fois sûr)
+        assert {t["id"] for t in filtered} == {1, 4}
+
+        # Simule ce que get_tasks retournerait sur cette liste filtrée
+        mock_get_tasks.return_value = (filtered, len(filtered), 1)
+
+        # Appel réel de search_tasks
+        results, total, pages = search_tasks(
+            "courses", page=1, size=10, tasks_list=self.tasks
+        )
+
+        # Vérifications
+        assert total == 2
+        assert {task["id"] for task in results} == {1, 4}
+
+    @patch("src.task_manager.get_tasks")
+    def test_search_by_description(self, mock_get_tasks):
+        mock_get_tasks.return_value = ([self.tasks[2]], 1, 1)
+        results, total, pages = search_tasks(
+            "aspirateur", tasks_list=self.tasks
+        )
+        assert total == 1
+        assert results[0]["id"] == 3
+
+    @patch("src.task_manager.get_tasks")
+    def test_search_is_case_insensitive(self, mock_get_tasks):
+        mock_get_tasks.return_value = ([self.tasks[1]], 1, 1)
+        results, total, pages = search_tasks("DOCTEUR", tasks_list=self.tasks)
+        assert total == 1
+        assert results[0]["id"] == 2
+
+    @patch("src.task_manager.get_tasks")
+    def test_search_empty_keyword_returns_all(self, mock_get_tasks):
+        mock_get_tasks.return_value = (self.tasks, len(self.tasks), 1)
+        results, total, pages = search_tasks("", tasks_list=self.tasks)
+        assert total == len(self.tasks)
+        assert len(results) == len(self.tasks)
+
+    @patch("src.task_manager.get_tasks")
+    def test_search_pagination(self, mock_get_tasks):
+        # simulate pagination: page 1 returns [task1, task2], page 2 returns [task3]
+        mock_get_tasks.side_effect = [
+            ([self.tasks[0], self.tasks[1]], 3, 2),
+            ([self.tasks[2]], 3, 2),
+        ]
+        results1, total1, pages1 = search_tasks(
+            "t", page=1, size=2, tasks_list=self.tasks
+        )
+        results2, total2, pages2 = search_tasks(
+            "t", page=2, size=2, tasks_list=self.tasks
+        )
+        assert results1 != results2
+        assert len(results1) == 2
+        assert len(results2) == 1
+
+    @patch("src.task_manager.get_tasks")
+    def test_search_page_out_of_bounds_returns_empty(self, mock_get_tasks):
+        mock_get_tasks.return_value = ([], 2, 1)
+        results, total, pages = search_tasks(
+            "courses", page=10, size=2, tasks_list=self.tasks
+        )
+        assert results == []
