@@ -87,7 +87,10 @@ def get_tasks(
 
 
 def filter_tasks_by_status(
-    status: str, page: int = 1, size: int = 20, data_file=DATA_FILE
+    status: str,
+    tasks_list: List[Dict],
+    page: int = 1,
+    size: int = 20,
 ) -> Tuple[List[Dict], int, int]:
     """Filtre les tâches par statut avec pagination.
 
@@ -101,25 +104,12 @@ def filter_tasks_by_status(
     if status not in VALID_STATUSES:
         raise ValueError("Invalid filter status")
 
-    all_tasks = _load_tasks(data_file=data_file)
-    filtered_tasks = [task for task in all_tasks if task["status"] == status]
+    filtered_tasks = [task for task in tasks_list if task["status"] == status]
 
-    total_tasks = len(filtered_tasks)
-    total_pages = (total_tasks + size - 1) // size if size else 1
-
-    if total_tasks == 0:
-        print(f"Aucune tâche avec le statut {status}.")
-        return [], 0, 0
-
-    if page > total_pages:
-        print(f"Page {page} n'existe pas. Total de pages: {total_pages}")
-        return [], total_tasks, total_pages
-    if page < 1:
-        raise ValueError("Invalid page size")
-
-    start = (page - 1) * size
-    end = start + size
-    return filtered_tasks[start:end], total_tasks, total_pages
+    task_range, total_tasks, total_pages = get_tasks(
+        page=page, size=size, tasks_list=filtered_tasks
+    )
+    return task_range, total_tasks, total_pages
 
 
 def create_task(

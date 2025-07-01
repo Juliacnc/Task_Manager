@@ -76,11 +76,11 @@ def list(page, size):
 @click.option("--page", default=1, help="Numéro de page (commence à 1)")
 @click.option("--size", default=10, help="Nombre de tâches par page")
 @cli.command()
-def filter(status, page, size):
+def filter(status, page, size, tasks_list=tasks_list):
     """Lister les tâches filtrées par statut"""
     try:
         tasks, total_tasks, total_pages = filter_tasks_by_status(
-            status=status, page=page, size=size
+            status=status, page=page, size=size, tasks_list=tasks_list
         )
     except ValueError as e:
         console.print(f"Erreur : {e}", style="red")
