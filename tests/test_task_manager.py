@@ -18,6 +18,7 @@ from src.task_manager import (
     get_task_by_id,
     modify_task,
     delete_task,
+    filter_tasks_by_status,
 )
 
 
@@ -343,3 +344,29 @@ class TestTaskManager:
         captured = capsys.readouterr()
         assert "Total de tâches: 0" in captured.out
         assert "Total de pages: 0" in captured.out
+
+
+        def test_filter_tasks_by_status_valid(self):
+        tasks, total, total_pages = filter_tasks_by_status("TODO", page=1, size=10)
+        assert all(t["status"] == "TODO" for t in tasks)
+        assert total >= len(tasks)
+        assert total_pages >= 1
+
+    def test_filter_tasks_by_status_empty_result(self):
+        # Supposons qu'il n'y a aucune tâche avec le statut "ONGOING" dans ce fichier
+        tasks, total, total_pages = filter_tasks_by_status("ONGOING", page=1, size=10)
+        assert tasks == []
+        assert total == 0
+        assert total_pages == 0
+
+    def test_filter_tasks_by_status_invalid_status(self):
+        with pytest.raises(ValueError, match="Invalid filter status"):
+            filter_tasks_by_status("INVALID_STATUS", page=1, size=10)
+
+    def test_filter_tasks_by_status_pagination(self):
+        # Si on a plus de 5 TODO, page 2 devrait retourner un sous-ensemble ou vide
+        tasks_page_1, total, total_pages = filter_tasks_by_status("TODO", page=1, size=5)
+        tasks_page_2, _, _ = filter_tasks_by_status("TODO", page=2, size=5)
+        assert tasks_page_1 != tasks_page_2 or tasks_page_2 == []
+        assert total >= len(tasks_page_1) + len(tasks_page_2)
+        assert total_pages >= 2 or total_pages == 1

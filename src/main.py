@@ -6,6 +6,7 @@ from rich.table import Table
 
 from task_manager import (
     get_tasks,
+    filter_tasks_by_status,
     create_task,
     change_task_status,
     delete_task,
@@ -57,6 +58,45 @@ def list(page, size):
     console.print(table)
 
 
+@click.option("--status", required=True, type=click.Choice(["TODO", "ONGOING", "DONE"], case_sensitive=True))
+@click.option("--page", default=1, help="Numéro de page (commence à 1)")
+@click.option("--size", default=10, help="Nombre de tâches par page")
+@cli.command()
+def filter(status, page, size):
+    """Lister les tâches filtrées par statut"""
+    try:
+        tasks, total_tasks, total_pages = filter_tasks_by_status(
+            status=status, page=page, size=size
+        )
+    except ValueError as e:
+        console.print(f"Erreur : {e}", style="red")
+        return
+
+    if not tasks:
+        console.print(f"Aucune tâche avec le statut '{status}' trouvée.", style="yellow")
+        return
+
+    table = Table(title=f"Tâches avec statut '{status}'")
+    table.add_column("ID", style="cyan", no_wrap=True)
+    table.add_column("Statut", style="green")
+    table.add_column("Titre", style="white")
+    table.add_column("Description", style="dim")
+    table.add_column("Créée le", style="magenta")
+
+    for task in tasks:
+        table.add_row(
+            str(task["id"]),
+            task["status"],
+            task["title"],
+            task["description"],
+            task["created_at"],
+        )
+    console.print(
+        f"Page {page}/{total_pages} - Total de tâches : {total_tasks}"
+    )
+    console.print(table)
+
+
 @cli.command()
 @click.option(
     "--title", prompt="Titre", help="Titre de la tâche (obligatoire)"
@@ -70,19 +110,6 @@ def create(title, description):
         task = create_task(title, description)
         console.print(
             f"Tâche créée avec succès (ID: {task['id']})", style="green"
-        )
-    except TaskValidationError as e:
-        console.print(f"Erreur : {e}", style="red")
-
-
-@cli.command()
-@click.argument("task_id", type=int)
-def delete(task_id):
-    """Supprime une tâche par son ID"""
-    try:
-        delete_task(task_id)
-        console.print(
-            f"Tâche ID {task_id} supprimée avec succès.", style="green"
         )
     except TaskValidationError as e:
         console.print(f"Erreur : {e}", style="red")
@@ -124,7 +151,12 @@ def update_status(task_id, new_status):
 @click.argument("task_id", type=int)
 def show(task_id):
     """Afficher une tâche par son ID"""
-    task = get_task_by_id(task_id)
+    try:
+        task = get_task_by_id(task_id)
+    except ValueError as e:
+        console.print(f"Erreur : {e}", style="red")
+        return
+
     table = Table(title=f"Tâche {task['id']}")
     table.add_column("Champ", style="cyan")
     table.add_column("Valeur", style="white")
@@ -172,7 +204,7 @@ def modify(task_id, title, description, id, status, created_at):
     if forbidden_fields:
         console.print(
             f"Erreur : Seuls les champs 'title' et 'description' "
-            f"peuvent être modifiés"
+            f"peuvent être modifiés. "
             f"Champs non autorisés détectés : {', '.join(forbidden_fields)}",
             style="red",
         )
