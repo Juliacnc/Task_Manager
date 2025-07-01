@@ -14,9 +14,12 @@ from task_manager import (
     modify_task,
     TaskNotFoundError,
     _load_tasks,
+    _save_tasks,
 )
 
 console = Console()
+
+tasks_list = _load_tasks(data_file="tasks.json")
 
 
 @click.group()
@@ -28,9 +31,8 @@ def cli():
 @click.option("--page", default=1, help="Numéro de page (commence à 1)")
 @click.option("--size", default=10, help="Nombre de tâches par page")
 @cli.command()
-def list(page, size):
+def list(page, size, tasks_list=tasks_list):
     """Lister les tâches"""
-    tasks_list = _load_tasks(data_file="tasks.json")
     tasks, total_tasks, total_pages = get_tasks(
         page=page, size=size, tasks_list=tasks_list
     )
@@ -68,12 +70,15 @@ def list(page, size):
 @click.option(
     "--description", default="", help="Description de la tâche (optionnelle)"
 )
-def create(title, description):
+def create(title, description, tasks_list=tasks_list):
     """Créer une nouvelle tâche"""
     try:
-        task = create_task(title, description)
+        new_task, tasks_list = create_task(
+            title, description, tasks_list=tasks_list
+        )
+        _save_tasks(tasks_list, data_file="tasks.json")
         console.print(
-            f"Tâche créée avec succès (ID: {task['id']})", style="green"
+            f"Tâche créée avec succès (ID: {new_task['id']})", style="green"
         )
     except TaskValidationError as e:
         console.print(f"Erreur : {e}", style="red")
@@ -81,23 +86,11 @@ def create(title, description):
 
 @cli.command()
 @click.argument("task_id", type=int)
-def delete(task_id):
+def delete(task_id, tasks_list=tasks_list):
     """Supprime une tâche par son ID"""
     try:
-        delete_task(task_id)
-        console.print(
-            f"Tâche ID {task_id} supprimée avec succès.", style="green"
-        )
-    except TaskValidationError as e:
-        console.print(f"Erreur : {e}", style="red")
-
-
-@cli.command()
-@click.argument("task_id", type=int)
-def delete(task_id):
-    """Supprime une tâche par son ID"""
-    try:
-        delete_task(task_id)
+        delete_task(task_id, tasks_list=tasks_list)
+        _save_tasks(tasks_list, data_file="tasks.json")
         console.print(
             f"Tâche ID {task_id} supprimée avec succès.", style="green"
         )
@@ -111,10 +104,13 @@ def delete(task_id):
     "new_status",
     type=click.Choice(["TODO", "ONGOING", "DONE"], case_sensitive=True),
 )
-def update_status(task_id, new_status):
+def update_status(task_id, new_status, tasks_list=tasks_list):
     """Changer le statut d'une tâche"""
     try:
-        task = change_task_status(task_id, new_status)
+        task, tasks_list = change_task_status(
+            task_id, new_status, tasks_list=tasks_list
+        )
+        _save_tasks(tasks_list, data_file="tasks.json")
         console.print(
             f"Tâche {task['id']} mise à jour avec le statut : [green]{task['status']}[/green]"
         )
@@ -164,7 +160,9 @@ def show(task_id):
     help="Modification du champ 'created_at' non autorisée",
     required=False,
 )
-def modify(task_id, title, description, id, status, created_at):
+def modify(
+    task_id, title, description, id, status, created_at, tasks_list=tasks_list
+):
     """Modifier une tâche existante"""
     forbidden_fields = []
     if id is not None:
@@ -182,7 +180,13 @@ def modify(task_id, title, description, id, status, created_at):
         )
         return
     try:
-        task = modify_task(task_id, title, description)
+        task, tasks_list = modify_task(
+            tasks_list=tasks_list,
+            task_id=task_id,
+            title=title,
+            description=description,
+        )
+        _save_tasks(tasks_list, data_file="tasks.json")
         console.print(
             f"Tâche {task['id']} modifiée avec succès", style="green"
         )
