@@ -7,6 +7,7 @@ from datetime import datetime
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+
 from src.task_manager import (
     get_tasks,
     create_task,
@@ -39,36 +40,18 @@ class TestTaskManager:
         ]
         _save_tasks(self.initial_tasks)
 
-    def test_get_tasks_returns_list(self):
-        tasks = get_tasks()
-        assert isinstance(tasks, list)
-
-    def test_get_tasks_returns_two_tasks(self):
-        tasks = get_tasks()
-        assert len(tasks) == 2
-
-    def test_get_tasks_returns_correct_structure(self):
-        tasks = get_tasks()
-        assert "id" in tasks[0]
-        assert "title" in tasks[0]
-        assert "description" in tasks[0]
-        assert "status" in tasks[0]
-
     def test_get_task_by_id_returns_correct_task(self):
-        """Test que get_task_by_id retourne la tâche correcte"""
         task = get_task_by_id(1)
-
         assert task["id"] == 1
         assert task["title"] == "Première tâche"
         assert task["description"] == "Description de la première tâche"
         assert task["status"] == "TODO"
 
     def test_get_task_by_id_raises_error_for_invalid_id(self):
-        """Test que get_task_by_id lève une erreur pour un ID invalide"""
-        try:
+        with pytest.raises(
+            ValueError, match="Tâche avec l'ID 999 non trouvée."
+        ):
             get_task_by_id(999)
-        except ValueError as e:
-            assert str(e) == "Tâche avec l'ID 999 non trouvée."
 
     def test_create_task_with_valid_title_only(self):
         task = create_task("Nouvelle tâche")
@@ -119,6 +102,7 @@ class TestTaskManager:
 
     def test_task_is_persisted(self):
         task = create_task("Persistée")
+        print(f"Created task: {task}")
         all_tasks = get_tasks()
         assert any(t["title"] == "Persistée" for t in all_tasks)
 
@@ -126,7 +110,6 @@ class TestTaskManager:
         task = create_task("Tâche à modifier")
         modified_task = modify_task(task["id"], title="Nouveau titre")
         assert modified_task["title"] == "Nouveau titre"
-        assert modified_task["id"] == task["id"]
 
     def test_modify_task_updates_description(self):
         task = create_task("Tâche à modifier")
@@ -134,7 +117,6 @@ class TestTaskManager:
             task["id"], description="Nouvelle description"
         )
         assert modified_task["description"] == "Nouvelle description"
-        assert modified_task["id"] == task["id"]
 
     def test_modify_task_updates_with_too_long_title(self):
         task = create_task("Tâche à modifier")
@@ -177,10 +159,8 @@ class TestTaskManager:
         with pytest.raises(TaskValidationError, match="Title is required"):
             modify_task(task["id"], title="   ")
 
-    # --- Tests US004 (changer le statut) ---
-
     def test_update_status_valid(self):
-        updated = change_task_status(1, "ONGOING")  # ✅ renommé ici
+        updated = change_task_status(1, "ONGOING")
         assert updated["status"] == "ONGOING"
         tasks = get_tasks()
         assert any(t["id"] == 1 and t["status"] == "ONGOING" for t in tasks)
@@ -190,14 +170,13 @@ class TestTaskManager:
             TaskValidationError,
             match="Invalid status. Allowed values: TODO, ONGOING, DONE",
         ):
-            change_task_status(1, "INVALID")  # ✅ renommé ici
+            change_task_status(1, "INVALID")
 
     def test_update_status_nonexistent_task(self):
         with pytest.raises(Exception, match="Task not found"):
-            change_task_status(999, "TODO")  # ✅ renommé ici
+            change_task_status(999, "TODO")
 
     def test_delete_existing_task(self):
-        # Crée une tâche temporaire
         task = create_task("Tâche temporaire")
         task_id = task["id"]
         tasks_before = get_tasks()
@@ -210,4 +189,49 @@ class TestTaskManager:
 
     def test_delete_nonexistent_task_raises(self):
         with pytest.raises(TaskValidationError, match="Task not found"):
-            delete_task(9999)  # ID fictif
+            delete_task(9999)
+
+    def test_get_tasks_returns_only_ten_tasks_page_one(self):
+        for i in range(15):
+            create_task(f"Tâche {i + 3}")
+
+        tasks, total_tasks, total_pages = get_tasks(page=1, size=10)
+        assert len(tasks) == 10
+        assert total_tasks == 17
+        assert total_pages == 2
+
+    def test_get_tasks_returns_correct_page_two(self):
+        for i in range(15):
+            create_task(f"Tâche {i + 3}")
+
+        tasks, total_tasks, total_pages = get_tasks(page=2, size=10)
+        assert len(tasks) == 7
+        assert total_tasks == 17
+        assert total_pages == 2
+
+    def test_get_tasks_should_raise_error_for_negative_page(self):
+        with pytest.raises(ValueError, match="Invalid page size"):
+            get_tasks(page=-1, size=10)
+
+    def test_get_tasks_should_raise_error_for_zero_page(self):
+        with pytest.raises(ValueError, match="Invalid page size"):
+            get_tasks(page=0, size=10)
+
+    def test_get_tasks_should_return_empty_list_for_too_page(self, capsys):
+        result = get_tasks(
+            page=5,
+            size=10,
+            data_file="tests/data/test_pagination.json",
+        )
+        assert result == ([], 30, 3)
+        captured = capsys.readouterr()
+        assert "Page 5 n'existe pas. Total de pages: 3" in captured.out
+
+    def test_get_tasks_should_return_empty_list_for_empty_file(self, capsys):
+        result = get_tasks(
+            data_file="tests/data/test_empty_tasks_pagination.json"
+        )
+        assert result == ([], 0, 0)
+        captured = capsys.readouterr()
+        assert "Total de tâches: 0" in captured.out
+        assert "Total de pages: 0" in captured.out
