@@ -7,7 +7,6 @@ from datetime import datetime
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-
 from src.task_manager import (
     get_tasks,
     create_task,
@@ -18,7 +17,6 @@ from src.task_manager import (
     modify_task,
     delete_task,
 )
-
 
 class TestTaskManager:
     def setup_method(self):
@@ -117,8 +115,9 @@ class TestTaskManager:
         _, tasks_list = create_task(
             "Creation tache test", tasks_list=self.initial_tasks
         )
-
         assert any(t["title"] == "Creation tache test" for t in tasks_list)
+
+    # --- Tests sur la US 9 : modification d'une tâche ---
 
     def test_modify_task_updates_title(self):
         modified_task, _ = modify_task(
@@ -185,6 +184,8 @@ class TestTaskManager:
     def test_modify_task_error_if_title_empty(self):
         with pytest.raises(TaskValidationError, match="Title is required"):
             modify_task(task_id=1, title="   ", tasks_list=self.initial_tasks)
+
+    # --- Fin tests US9 ---
 
     def test_update_status_valid(self):
         updated, tasks = change_task_status(
