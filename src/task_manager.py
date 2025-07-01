@@ -85,7 +85,9 @@ def get_tasks(
     return tasks[start:end], total_tasks, total_pages
 
 
-def create_task(title: str, description: str = "") -> Dict:
+def create_task(
+    title: str, description: str = "", data_file=DATA_FILE
+) -> Dict:
     """Crée une nouvelle tâche avec validation"""
     title = title.strip()
     description = description.strip()
@@ -97,7 +99,7 @@ def create_task(title: str, description: str = "") -> Dict:
     if len(description) > 500:
         raise TaskValidationError("Description cannot exceed 500 characters")
 
-    tasks = _load_tasks()
+    tasks = _load_tasks(data_file=data_file)
     next_id = max([task["id"] for task in tasks], default=0) + 1
 
     new_task = {
@@ -109,7 +111,7 @@ def create_task(title: str, description: str = "") -> Dict:
     }
 
     tasks.append(new_task)
-    _save_tasks(tasks)
+    _save_tasks(tasks, data_file=data_file)
 
     return new_task
 
@@ -124,7 +126,11 @@ def get_task_by_id(task_id: int) -> Dict:
 
 
 def modify_task(
-    task_id: int, title: str = None, description: str = None, **kwargs
+    task_id: int,
+    title: str = None,
+    description: str = None,
+    data_file=DATA_FILE,
+    **kwargs,
 ) -> Dict:
     """Modifie une tâche existante.
 
@@ -135,7 +141,7 @@ def modify_task(
         raise TaskValidationError(
             "Seuls le titre et la description peuvent être modifiés."
         )
-    task_list = _load_tasks()
+    task_list = _load_tasks(data_file=data_file)
     for task in task_list:
         if task["id"] == task_id:
             if title is not None:
@@ -152,35 +158,37 @@ def modify_task(
                     "Description cannot exceed 500 characters"
                 )
 
-            _save_tasks(task_list)
+            _save_tasks(task_list, data_file=data_file)
             return task
 
     raise ValueError(f"Tâche avec l'ID {task_id} non trouvée.")
 
 
-def change_task_status(task_id: int, new_status: str) -> Dict:
+def change_task_status(
+    task_id: int, new_status: str, data_file=DATA_FILE
+) -> Dict:
     """Change le statut d'une tâche existante"""
     if new_status not in VALID_STATUSES:
         raise TaskValidationError(
             "Invalid status. Allowed values: TODO, ONGOING, DONE"
         )
 
-    tasks = _load_tasks()
+    tasks = _load_tasks(data_file=data_file)
     for task in tasks:
         if task["id"] == task_id:
             task["status"] = new_status
-            _save_tasks(tasks)
+            _save_tasks(tasks, data_file=data_file)
             return task
 
     raise TaskNotFoundError("Task not found")
 
 
-def delete_task(task_id: int):
+def delete_task(task_id: int, data_file=DATA_FILE):
     """Supprime définitivement une tâche existante par son ID"""
-    tasks = _load_tasks()
+    tasks = _load_tasks(data_file=data_file)
     updated_tasks = [task for task in tasks if task["id"] != task_id]
 
     if len(updated_tasks) == len(tasks):
         raise TaskValidationError("Task not found")
 
-    _save_tasks(updated_tasks)
+    _save_tasks(updated_tasks, data_file=data_file)
