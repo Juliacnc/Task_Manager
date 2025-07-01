@@ -38,11 +38,11 @@ class TaskNotFoundError(Exception):
 VALID_STATUSES = {"TODO", "ONGOING", "DONE"}
 
 
-def _load_tasks() -> List[Dict]:
+def _load_tasks(data_file=DATA_FILE) -> List[Dict]:
     """Charge les tâches depuis le fichier JSON"""
-    if os.path.exists(DATA_FILE):
+    if os.path.exists(data_file):
         try:
-            with open(DATA_FILE, "r", encoding="utf-8") as f:
+            with open(data_file, "r", encoding="utf-8") as f:
                 return json.load(f)
         except (json.JSONDecodeError, IOError):
             _save_tasks(DEFAULT_TASKS)
@@ -52,18 +52,20 @@ def _load_tasks() -> List[Dict]:
         return DEFAULT_TASKS.copy()
 
 
-def _save_tasks(tasks_to_save: List[Dict]):
+def _save_tasks(tasks_to_save: List[Dict], data_file=DATA_FILE):
     """Sauvegarde les tâches dans le fichier JSON"""
     try:
-        with open(DATA_FILE, "w", encoding="utf-8") as f:
+        with open(data_file, "w", encoding="utf-8") as f:
             json.dump(tasks_to_save, f, ensure_ascii=False, indent=2)
     except IOError:
         pass
 
 
-def get_tasks(page: int = 1, size: int = 20) -> List[Dict]:
+def get_tasks(
+    page: int = 1, size: int = 20, data_file=DATA_FILE
+) -> List[Dict]:
     """Récupère la liste des tâches"""
-    tasks = _load_tasks()
+    tasks = _load_tasks(data_file=data_file)
     total_tasks = len(tasks)
     total_pages = (total_tasks + size - 1) // size if size else 1
 

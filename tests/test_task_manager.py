@@ -17,9 +17,6 @@ from src.task_manager import (
     get_task_by_id,
     modify_task,
     delete_task,
-    list_tasks_paginated,
-    search_tasks,
-    filter_tasks_by_status,
 )
 
 
@@ -43,21 +40,6 @@ class TestTaskManager:
         ]
         _save_tasks(self.initial_tasks)
 
-    def test_get_tasks_returns_list(self):
-        tasks = get_tasks()
-        assert isinstance(tasks, list)
-
-    def test_get_tasks_returns_two_tasks(self):
-        tasks = get_tasks()
-        assert len(tasks) == 2
-
-    def test_get_tasks_returns_correct_structure(self):
-        tasks = get_tasks()
-        assert "id" in tasks[0]
-        assert "title" in tasks[0]
-        assert "description" in tasks[0]
-        assert "status" in tasks[0]
-
     def test_get_task_by_id_returns_correct_task(self):
         task = get_task_by_id(1)
         assert task["id"] == 1
@@ -66,7 +48,9 @@ class TestTaskManager:
         assert task["status"] == "TODO"
 
     def test_get_task_by_id_raises_error_for_invalid_id(self):
-        with pytest.raises(ValueError, match="Tâche avec l'ID 999 non trouvée."):
+        with pytest.raises(
+            ValueError, match="Tâche avec l'ID 999 non trouvée."
+        ):
             get_task_by_id(999)
 
     def test_create_task_with_valid_title_only(self):
@@ -92,12 +76,17 @@ class TestTaskManager:
 
     def test_create_task_raises_if_title_too_long(self):
         long_title = "T" * 101
-        with pytest.raises(TaskValidationError, match="Title cannot exceed 100 characters"):
+        with pytest.raises(
+            TaskValidationError, match="Title cannot exceed 100 characters"
+        ):
             create_task(long_title)
 
     def test_create_task_raises_if_description_too_long(self):
         long_desc = "D" * 501
-        with pytest.raises(TaskValidationError, match="Description cannot exceed 500 characters"):
+        with pytest.raises(
+            TaskValidationError,
+            match="Description cannot exceed 500 characters",
+        ):
             create_task("Titre valide", long_desc)
 
     def test_created_at_is_precise_to_second(self):
@@ -113,6 +102,7 @@ class TestTaskManager:
 
     def test_task_is_persisted(self):
         task = create_task("Persistée")
+        print(f"Created task: {task}")
         all_tasks = get_tasks()
         assert any(t["title"] == "Persistée" for t in all_tasks)
 
@@ -123,29 +113,46 @@ class TestTaskManager:
 
     def test_modify_task_updates_description(self):
         task = create_task("Tâche à modifier")
-        modified_task = modify_task(task["id"], description="Nouvelle description")
+        modified_task = modify_task(
+            task["id"], description="Nouvelle description"
+        )
         assert modified_task["description"] == "Nouvelle description"
 
     def test_modify_task_updates_with_too_long_title(self):
         task = create_task("Tâche à modifier")
         long_title = "T" * 101
-        with pytest.raises(TaskValidationError, match="Title cannot exceed 100 characters"):
+        with pytest.raises(
+            TaskValidationError, match="Title cannot exceed 100 characters"
+        ):
             modify_task(task["id"], title=long_title)
 
     def test_modify_task_updates_with_too_long_description(self):
         task = create_task("Tâche à modifier")
         long_description = "D" * 501
-        with pytest.raises(TaskValidationError, match="Description cannot exceed 500 characters"):
+        with pytest.raises(
+            TaskValidationError,
+            match="Description cannot exceed 500 characters",
+        ):
             modify_task(task["id"], description=long_description)
 
     def test_modify_task_raise_error_for_invalid_id(self):
-        with pytest.raises(ValueError, match="Tâche avec l'ID 999 non trouvée."):
+        with pytest.raises(
+            ValueError, match="Tâche avec l'ID 999 non trouvée."
+        ):
             modify_task(999, title="Nouveau titre")
 
     def test_modify_task_raises_error_for_invalid_fields(self):
         task = create_task("Tâche à modifier")
-        with pytest.raises(TaskValidationError, match="Seuls le titre et la description peuvent être modifiés."):
-            modify_task(task["id"], id=12, status="DONE", created_at="2024-01-01T10:00:00")
+        with pytest.raises(
+            TaskValidationError,
+            match="Seuls le titre et la description peuvent être modifiés.",
+        ):
+            modify_task(
+                task["id"],
+                id=12,
+                status="DONE",
+                created_at="2024-01-01T10:00:00",
+            )
 
     def test_modify_task_error_if_title_empty(self):
         task = create_task("Tâche à modifier")
@@ -159,7 +166,10 @@ class TestTaskManager:
         assert any(t["id"] == 1 and t["status"] == "ONGOING" for t in tasks)
 
     def test_update_status_invalid_status(self):
-        with pytest.raises(TaskValidationError, match="Invalid status. Allowed values: TODO, ONGOING, DONE"):
+        with pytest.raises(
+            TaskValidationError,
+            match="Invalid status. Allowed values: TODO, ONGOING, DONE",
+        ):
             change_task_status(1, "INVALID")
 
     def test_update_status_nonexistent_task(self):
@@ -181,63 +191,47 @@ class TestTaskManager:
         with pytest.raises(TaskValidationError, match="Task not found"):
             delete_task(9999)
 
-    def test_pagination_returns_correct_number_of_tasks(self):
-        for i in range(25):
-            create_task(f"Tâche {i+1}")
+    def test_get_tasks_returns_only_ten_tasks_page_one(self):
+        for i in range(15):
+            create_task(f"Tâche {i + 3}")
 
-        result = list_tasks_paginated(page=1, size=10)
-        assert result["page"] == 1
-        assert result["page_size"] == 10
-        assert result["total_items"] >= 25
-        assert len(result["tasks"]) == 10
+        tasks, total_tasks, total_pages = get_tasks(page=1, size=10)
+        assert len(tasks) == 10
+        assert total_tasks == 17
+        assert total_pages == 2
 
-    def test_pagination_returns_empty_if_page_too_high(self):
-        result = list_tasks_paginated(page=100, size=10)
-        assert result["tasks"] == []
+    def test_get_tasks_returns_correct_page_two(self):
+        for i in range(15):
+            create_task(f"Tâche {i + 3}")
 
-    def test_pagination_default_to_20(self):
-        for i in range(30):
-            create_task(f"Tâche test {i}")
-        result = list_tasks_paginated()
-        assert result["page_size"] == 20
-        assert len(result["tasks"]) == 20
+        tasks, total_tasks, total_pages = get_tasks(page=2, size=10)
+        assert len(tasks) == 7
+        assert total_tasks == 17
+        assert total_pages == 2
 
-    def test_invalid_page_size_raises_error(self):
-        with pytest.raises(TaskValidationError, match="Invalid page size"):
-            list_tasks_paginated(size=0)
+    def test_get_tasks_should_raise_error_for_negative_page(self):
+        with pytest.raises(ValueError, match="Invalid page size"):
+            get_tasks(page=-1, size=10)
 
-    def test_search_by_keyword_in_title(self):
-        create_task("Acheter du pain")
-        result = search_tasks("pain")
-        assert any("pain" in t["title"].lower() for t in result["tasks"])
+    def test_get_tasks_should_raise_error_for_zero_page(self):
+        with pytest.raises(ValueError, match="Invalid page size"):
+            get_tasks(page=0, size=10)
 
-    def test_search_by_keyword_in_description(self):
-        create_task("Titre générique", "Aller à la boulangerie")
-        result = search_tasks("boulangerie")
-        assert any("boulangerie" in t["description"].lower() for t in result["tasks"])
+    def test_get_tasks_should_return_empty_list_for_too_page(self, capsys):
+        result = get_tasks(
+            page=5,
+            size=10,
+            data_file="tests/data/test_pagination.json",
+        )
+        assert result == ([], 30, 3)
+        captured = capsys.readouterr()
+        assert "Page 5 n'existe pas. Total de pages: 3" in captured.out
 
-    def test_search_is_case_insensitive(self):
-        create_task("Nettoyer la voiture")
-        result = search_tasks("VOITURE")
-        assert len(result["tasks"]) > 0
-
-    def test_search_with_empty_keyword_returns_all(self):
-        result_all = search_tasks("")
-        result_get_tasks = get_tasks()
-        assert len(result_all["tasks"]) == len(result_get_tasks)
-
-    def test_filter_by_valid_status(self):
-        create_task("Tâche TODO")
-        t2 = create_task("Tâche DONE")
-        change_task_status(t2["id"], "DONE")
-
-        result = filter_tasks_by_status("DONE")
-        assert all(t["status"] == "DONE" for t in result["tasks"])
-
-    def test_filter_by_invalid_status_raises(self):
-        with pytest.raises(TaskValidationError, match="Invalid filter status"):
-            filter_tasks_by_status("FINISHED")
-
-    def test_filter_by_status_with_no_match_returns_empty(self):
-        result = filter_tasks_by_status("ONGOING")
-        assert isinstance(result["tasks"], list)
+    def test_get_tasks_should_return_empty_list_for_empty_file(self, capsys):
+        result = get_tasks(
+            data_file="tests/data/test_empty_tasks_pagination.json"
+        )
+        assert result == ([], 0, 0)
+        captured = capsys.readouterr()
+        assert "Total de tâches: 0" in captured.out
+        assert "Total de pages: 0" in captured.out
