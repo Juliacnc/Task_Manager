@@ -165,3 +165,71 @@ def delete_task(task_id: int):
         raise TaskValidationError("Task not found")
 
     _save_tasks(updated_tasks)
+    
+    
+def list_tasks_paginated(page: int = 1, size: int = 20) -> Dict:
+    """Retourne les tâches paginées"""
+    if size <= 0:
+        raise TaskValidationError("Invalid page size")
+    tasks = _load_tasks()
+    total = len(tasks)
+    total_pages = (total + size - 1) // size
+    start = (page - 1) * size
+    end = start + size
+    page_tasks = tasks[start:end]
+    return {
+        "page": page,
+        "page_size": size,
+        "total_items": total,
+        "total_pages": total_pages,
+        "tasks": page_tasks,
+    }
+
+
+def search_tasks(keyword: str = "", page: int = 1, size: int = 20) -> Dict:
+    """Recherche les tâches par mot-clé insensible à la casse"""
+    if size <= 0:
+        raise TaskValidationError("Invalid page size")
+    keyword = keyword.lower().strip()
+    tasks = _load_tasks()
+
+    if keyword:
+        tasks = [
+            t
+            for t in tasks
+            if keyword in t["title"].lower() or keyword in t["description"].lower()
+        ]
+
+    total = len(tasks)
+    total_pages = (total + size - 1) // size
+    start = (page - 1) * size
+    end = start + size
+    return {
+        "page": page,
+        "page_size": size,
+        "total_items": total,
+        "total_pages": total_pages,
+        "tasks": tasks[start:end],
+    }
+
+
+def filter_tasks_by_status(status: str, page: int = 1, size: int = 20) -> Dict:
+    """Filtre les tâches selon le statut avec pagination"""
+    if size <= 0:
+        raise TaskValidationError("Invalid page size")
+    if status not in VALID_STATUSES:
+        raise TaskValidationError("Invalid filter status")
+    tasks = [t for t in _load_tasks() if t["status"] == status]
+
+    total = len(tasks)
+    total_pages = (total + size - 1) // size
+    start = (page - 1) * size
+    end = start + size
+    return {
+        "page": page,
+        "page_size": size,
+        "total_items": total,
+        "total_pages": total_pages,
+        "tasks": tasks[start:end],
+    }
+

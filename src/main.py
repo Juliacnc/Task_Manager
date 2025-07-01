@@ -23,7 +23,8 @@ def cli():
     """Gestionnaire de Tâches - Version CLI Python"""
     pass
 
-
+@click.option('--page', default=1, help='Numéro de page (commence à 1)')
+@click.option('--size', default=10, help='Nombre de tâches par page')
 @cli.command()
 def list():
     """Lister les tâches"""
