@@ -13,7 +13,7 @@ from task_manager import (
     get_task_by_id,
     modify_task,
     TaskNotFoundError,
-    _load_tasks,
+    search_tasks,  # <-- ajout de la fonction search_tasks
 )
 
 console = Console()
@@ -25,21 +25,18 @@ def cli():
     pass
 
 
-@click.option("--page", default=1, help="Numéro de page (commence à 1)")
-@click.option("--size", default=10, help="Nombre de tâches par page")
 @cli.command()
+@click.option('--page', default=1, help='Numéro de page (commence à 1)')
+@click.option('--size', default=10, help='Nombre de tâches par page')
 def list(page, size):
     """Lister les tâches"""
-    tasks_list = _load_tasks(data_file="tasks.json")
-    tasks, total_tasks, total_pages = get_tasks(
-        page=page, size=size, tasks_list=tasks_list
-    )
+    tasks, total_tasks, total_pages = get_tasks(page=page, size=size)
 
     if not tasks:
         console.print("Aucune tâche trouvée.", style="yellow")
         return
 
-    table = Table(title="Liste des tâches")
+    table = Table(title=f"Liste des tâches (page {page}/{total_pages})")
     table.add_column("ID", style="cyan", no_wrap=True)
     table.add_column("Statut", style="green")
     table.add_column("Titre", style="white")
@@ -54,12 +51,9 @@ def list(page, size):
             task["description"],
             task["created_at"],
         )
-    console.print(
-        f"Page {page}/{total_pages} - Total de tâches : {total_tasks}"
-    )
 
     console.print(table)
-
+    console.print(f"Page {page} sur {total_pages} - Total de tâches : {total_tasks}", style="bold")
 
 @cli.command()
 @click.option(
@@ -78,7 +72,6 @@ def create(title, description):
     except TaskValidationError as e:
         console.print(f"Erreur : {e}", style="red")
 
-
 @cli.command()
 @click.argument("task_id", type=int)
 def delete(task_id):
@@ -90,20 +83,6 @@ def delete(task_id):
         )
     except TaskValidationError as e:
         console.print(f"Erreur : {e}", style="red")
-
-
-@cli.command()
-@click.argument("task_id", type=int)
-def delete(task_id):
-    """Supprime une tâche par son ID"""
-    try:
-        delete_task(task_id)
-        console.print(
-            f"Tâche ID {task_id} supprimée avec succès.", style="green"
-        )
-    except TaskValidationError as e:
-        console.print(f"Erreur : {e}", style="red")
-
 
 @cli.command()
 @click.argument("task_id", type=int)
@@ -123,12 +102,16 @@ def update_status(task_id, new_status):
     except TaskNotFoundError as e:
         console.print(f"Erreur : {e}", style="red")
 
-
 @cli.command()
 @click.argument("task_id", type=int)
 def show(task_id):
     """Afficher une tâche par son ID"""
-    task = get_task_by_id(task_id)
+    try:
+        task = get_task_by_id(task_id)
+    except TaskNotFoundError as e:
+        console.print(f"Erreur : {e}", style="red")
+        return
+
     table = Table(title=f"Tâche {task['id']}")
     table.add_column("Champ", style="cyan")
     table.add_column("Valeur", style="white")
@@ -140,7 +123,6 @@ def show(task_id):
     table.add_row("Créée le", task["created_at"])
 
     console.print(table)
-
 
 @cli.command()
 @click.argument("task_id", type=int)
@@ -176,7 +158,7 @@ def modify(task_id, title, description, id, status, created_at):
     if forbidden_fields:
         console.print(
             f"Erreur : Seuls les champs 'title' et 'description' "
-            f"peuvent être modifiés"
+            f"peuvent être modifiés. "
             f"Champs non autorisés détectés : {', '.join(forbidden_fields)}",
             style="red",
         )
@@ -190,6 +172,41 @@ def modify(task_id, title, description, id, status, created_at):
         console.print(f"Erreur : {e}", style="red")
     except TaskValidationError as e:
         console.print(f"Erreur de validation : {e}", style="red")
+
+@cli.command()
+@click.argument("keyword", type=str)
+@click.option('--page', default=1, help='Numéro de page (commence à 1)')
+@click.option('--size', default=10, help='Nombre de tâches par page')
+def search(keyword, page, size):
+    """Rechercher des tâches par mot clé dans le titre ou la description"""
+    try:
+        tasks, total, total_pages = search_tasks(keyword, page=page, size=size)
+    except ValueError as e:
+        console.print(f"Erreur : {e}", style="red")
+        return
+
+    if not tasks:
+        console.print(f"Aucune tâche trouvée pour le mot clé : '{keyword}'", style="yellow")
+        return
+
+    table = Table(title=f"Résultats de recherche pour '{keyword}' (page {page}/{total_pages})")
+    table.add_column("ID", style="cyan", no_wrap=True)
+    table.add_column("Statut", style="green")
+    table.add_column("Titre", style="white")
+    table.add_column("Description", style="dim")
+    table.add_column("Créée le", style="magenta")
+
+    for task in tasks:
+        table.add_row(
+            str(task["id"]),
+            task["status"],
+            task["title"],
+            task["description"],
+            task["created_at"],
+        )
+
+    console.print(table)
+    console.print(f"Page {page} sur {total_pages} - Total de tâches trouvées : {total}", style="bold")
 
 
 if __name__ == "__main__":

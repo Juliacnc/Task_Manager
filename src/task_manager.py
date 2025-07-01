@@ -62,14 +62,14 @@ def _save_tasks(tasks_to_save: List[Dict], data_file=DATA_FILE):
 
 
 def get_tasks(
-    page: int = 1, size: int = 20, tasks_list: List[Dict] = None
+    page: int = 1, size: int = 20, data_file=DATA_FILE
 ) -> List[Dict]:
     """Récupère la liste des tâches"""
-    # tasks = _load_tasks(data_file=data_file)
-    total_tasks = len(tasks_list)
+    tasks = _load_tasks(data_file=data_file)
+    total_tasks = len(tasks)
     total_pages = (total_tasks + size - 1) // size if size else 1
 
-    if not tasks_list:
+    if not tasks:
         print("Total de tâches: {}".format(total_tasks))
         print("Total de pages: {}".format(total_pages))
         return [], total_tasks, total_pages
@@ -82,7 +82,7 @@ def get_tasks(
 
     start = (page - 1) * size
     end = start + size
-    return tasks_list[start:end], total_tasks, total_pages
+    return tasks[start:end], total_tasks, total_pages
 
 
 def create_task(
@@ -192,3 +192,26 @@ def delete_task(task_id: int, data_file=DATA_FILE):
         raise TaskValidationError("Task not found")
 
     _save_tasks(updated_tasks, data_file=data_file)
+    
+
+def search_tasks(keyword, page=1, size=10, data_file=DATA_FILE):
+    tasks = _load_tasks(data_file)
+    keyword = keyword.strip().lower()
+    if keyword:
+        filtered = [
+            t for t in tasks
+            if keyword in t["title"].lower() or keyword in t["description"].lower()
+        ]
+    else:
+        filtered = tasks
+    total_tasks = len(filtered)
+    total_pages = (total_tasks + size - 1) // size if total_tasks > 0 else 0
+    if page < 1 or size < 1:
+        raise ValueError("Invalid page size")
+    if page > total_pages and total_pages != 0:
+        print(f"Page {page} n'existe pas. Total de pages: {total_pages}")
+        return [], total_tasks, total_pages
+    start = (page - 1) * size
+    end = start + size
+    return filtered[start:end], total_tasks, total_pages
+

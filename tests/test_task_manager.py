@@ -18,6 +18,7 @@ from src.task_manager import (
     get_task_by_id,
     modify_task,
     delete_task,
+    search_tasks,
 )
 
 
@@ -358,3 +359,89 @@ class TestTaskManager:
         captured = capsys.readouterr()
         assert "Total de tâches: 0" in captured.out
         assert "Total de pages: 0" in captured.out
+
+
+    class TestSearchTasks:
+    def setup_method(self):
+        self.tasks = [
+            {"id": 1, "title": "Faire les courses", "description": "Acheter du lait", "status": "TODO", "created_at": "2024-01-01T10:00:00"},
+            {"id": 2, "title": "Appeler le docteur", "description": "Rendez-vous lundi", "status": "DONE", "created_at": "2024-01-02T10:00:00"},
+            {"id": 3, "title": "Faire le ménage", "description": "Passer l'aspirateur", "status": "TODO", "created_at": "2024-01-03T10:00:00"},
+            {"id": 4, "title": "Courses de Noël", "description": "Acheter des cadeaux", "status": "ONGOING", "created_at": "2024-01-04T10:00:00"},
+            {"id": 5, "title": "Finir projet", "description": "Rendu avant la fin du mois", "status": "TODO", "created_at": "2024-01-05T10:00:00"},
+        ]
+        _save_tasks(self.tasks, data_file="tests/data/test_search_tasks.json")
+
+    def test_search_by_title(self):
+        results, total, pages = search_tasks("courses", page=1, size=10, data_file="tests/data/test_search_tasks.json")
+        assert total == 2
+        assert any(task["id"] == 1 for task in results)
+        assert any(task["id"] == 4 for task in results)
+
+    def test_search_by_description(self):
+        results, total, pages = search_tasks("aspirateur", page=1, size=10, data_file="tests/data/test_search_tasks.json")
+        assert total == 1
+        assert results[0]["id"] == 3
+
+    def test_search_is_case_insensitive(self):
+        results, total, pages = search_tasks("DOCTEUR", page=1, size=10, data_file="tests/data/test_search_tasks.json")
+        assert total == 1
+        assert results[0]["id"] == 2
+
+    def test_search_empty_keyword_returns_all(self):
+        results, total, pages = search_tasks("", page=1, size=10, data_file="tests/data/test_search_tasks.json")
+        assert total == len(self.tasks)
+        assert len(results) == len(self.tasks)
+
+    def test_search_pagination(self):
+        results, total, pages = search_tasks("t", page=1, size=2, data_file="tests/data/test_search_tasks.json")
+        assert total >= 2
+        assert len(results) <= 2
+        results2, _, _ = search_tasks("t", page=2, size=2, data_file="tests/data/test_search_tasks.json")
+        assert results != results2
+
+    def test_search_page_out_of_bounds_returns_empty(self):
+        results, total, pages = search_tasks("courses", page=10, size=2, data_file="tests/data/test_search_tasks.json")
+        assert results == []
+class TestSearchTasks:
+    def setup_method(self):
+        self.tasks = [
+            {"id": 1, "title": "Faire les courses", "description": "Acheter du lait", "status": "TODO", "created_at": "2024-01-01T10:00:00"},
+            {"id": 2, "title": "Appeler le docteur", "description": "Rendez-vous lundi", "status": "DONE", "created_at": "2024-01-02T10:00:00"},
+            {"id": 3, "title": "Faire le ménage", "description": "Passer l'aspirateur", "status": "TODO", "created_at": "2024-01-03T10:00:00"},
+            {"id": 4, "title": "Courses de Noël", "description": "Acheter des cadeaux", "status": "ONGOING", "created_at": "2024-01-04T10:00:00"},
+            {"id": 5, "title": "Finir projet", "description": "Rendu avant la fin du mois", "status": "TODO", "created_at": "2024-01-05T10:00:00"},
+        ]
+        _save_tasks(self.tasks, data_file="tests/data/test_search_tasks.json")
+
+    def test_search_by_title(self):
+        results, total, pages = search_tasks("courses", page=1, size=10, data_file="tests/data/test_search_tasks.json")
+        assert total == 2
+        assert any(task["id"] == 1 for task in results)
+        assert any(task["id"] == 4 for task in results)
+
+    def test_search_by_description(self):
+        results, total, pages = search_tasks("aspirateur", page=1, size=10, data_file="tests/data/test_search_tasks.json")
+        assert total == 1
+        assert results[0]["id"] == 3
+
+    def test_search_is_case_insensitive(self):
+        results, total, pages = search_tasks("DOCTEUR", page=1, size=10, data_file="tests/data/test_search_tasks.json")
+        assert total == 1
+        assert results[0]["id"] == 2
+
+    def test_search_empty_keyword_returns_all(self):
+        results, total, pages = search_tasks("", page=1, size=10, data_file="tests/data/test_search_tasks.json")
+        assert total == len(self.tasks)
+        assert len(results) == len(self.tasks)
+
+    def test_search_pagination(self):
+        results, total, pages = search_tasks("t", page=1, size=2, data_file="tests/data/test_search_tasks.json")
+        assert total >= 2
+        assert len(results) <= 2
+        results2, _, _ = search_tasks("t", page=2, size=2, data_file="tests/data/test_search_tasks.json")
+        assert results != results2
+
+    def test_search_page_out_of_bounds_returns_empty(self):
+        results, total, pages = search_tasks("courses", page=10, size=2, data_file="tests/data/test_search_tasks.json")
+        assert results == []
