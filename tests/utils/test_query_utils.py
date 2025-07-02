@@ -138,9 +138,7 @@ class TestFilterTasksByStatus:
 
     def test_filter_tasks_by_status_invalid_status(self):
         with pytest.raises(ValueError, match="Invalid filter status"):
-            filter_tasks_by_status(
-                "INVALID_STATUS", tasks_list=self.tasks, page=1, size=10
-            )
+            filter_tasks_by_status("INVALID_STATUS", tasks_list=self.tasks)
 
 
 class TestSortedTask:
