@@ -48,7 +48,7 @@ def change_task_status(ctx, task_id: int, status: str):
     """Change le statut d'une tâche"""
     tasks_list = ctx.obj["tasks_list"]
     updated_task, updated_list = _change_task_status(
-        tasks_list, task_id, status
+        tasks_list=tasks_list, task_id=task_id, new_status=status
     )
     ctx.obj["tasks_list"] = updated_list
     click.echo(

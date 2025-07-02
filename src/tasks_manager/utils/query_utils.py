@@ -34,8 +34,6 @@ def get_tasks(
 def filter_tasks_by_status(
     status: str,
     tasks_list: List[Dict],
-    page: int = 1,
-    size: int = 20,
 ) -> Tuple[List[Dict], int, int]:
     """Filtre les tâches par statut avec pagination.
 
@@ -62,7 +60,7 @@ def filter_by_id(task_id: int, tasks_list: List[Dict]) -> Dict:
     raise TaskNotFoundError(f"Tâche avec l'ID {task_id} non trouvée.")
 
 
-def search_tasks(keyword, tasks_list, page=1, size=10) -> List[Dict]:
+def search_tasks(keyword, tasks_list) -> List[Dict]:
     keyword = keyword.strip().lower()
     if keyword:
         filtered = [

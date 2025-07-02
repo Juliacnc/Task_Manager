@@ -65,6 +65,7 @@ def _modify_task(
         raise TaskValidationError(
             "Seuls le titre et la description peuvent être modifiés."
         )
+
     for task in tasks_list:
         if task["id"] == task_id:
             if title is not None:
@@ -85,6 +86,7 @@ def _modify_task(
                 task["description"] = description
 
             return task, tasks_list
+        raise TaskNotFoundError(f"Tâche avec l'ID {task_id} non trouvée.")
 
 
 def _change_task_status(
