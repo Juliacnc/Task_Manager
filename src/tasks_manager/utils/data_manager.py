@@ -1,3 +1,5 @@
+"""Module to manage data for Task Manager application."""
+
 from typing import List, Dict, Tuple
 from datetime import datetime
 

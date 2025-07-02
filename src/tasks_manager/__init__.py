@@ -1,0 +1,1 @@
+"""Module Task Manager application."""

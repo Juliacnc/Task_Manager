@@ -5,6 +5,6 @@ class TaskValidationError(Exception):
 
 
 class TaskNotFoundError(Exception):
-    """Exception personnalisée pour tâche non trouvée"""
+    """Exception personnalisée pour tâche non trouvée."""
 
     pass

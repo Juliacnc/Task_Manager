@@ -1,3 +1,5 @@
+"""Task Manager CLI Application"""
+
 import click
 from pathlib import Path
 import sys

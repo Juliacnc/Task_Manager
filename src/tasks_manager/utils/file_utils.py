@@ -1,3 +1,5 @@
+"""Module utils for Task Manager application."""
+
 import json
 import os
 from typing import List, Dict

@@ -1,3 +1,5 @@
+"""Module cli to manage tasks in Task Manager application."""
+
 import click
 from src.tasks_manager.utils.data_manager import (
     _create_task,

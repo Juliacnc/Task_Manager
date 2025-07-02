@@ -1,3 +1,5 @@
+"""Module cli to view tasks in Task Manager application."""
+
 import click
 from src.tasks_manager.utils.query_utils import (
     get_tasks,

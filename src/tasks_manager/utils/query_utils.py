@@ -1,3 +1,5 @@
+"""Module to query tasks in Task Manager application."""
+
 from typing import List, Dict, Tuple
 
 from src.classes.errors import (
