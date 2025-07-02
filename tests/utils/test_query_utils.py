@@ -5,6 +5,7 @@ from src.tasks_manager.utils.query_utils import (
     search_tasks,
     filter_tasks_by_status,
     sorted_task,
+    get_tasks,
 )
 
 
@@ -202,3 +203,59 @@ class TestSortedTask:
     def test_sorted_task_invalid_sort_by(self):
         with pytest.raises(ValueError, match="Invalid sort criteria."):
             sorted_task(tasks_list=self.tasks, sort_by="invalid_field")
+
+
+class TestGetTasks:
+    def setup_method(self):
+        self.tasks = [
+            {
+                "id": i,
+                "title": f"Task {i}",
+                "description": "",
+                "status": "TODO",
+                "created_at": "2024-01-01T10:00:00",
+            }
+            for i in range(1, 31)
+        ]
+
+    def test_get_tasks_returns_only_ten_tasks_page_one(self):
+        tasks, total_tasks, total_pages = get_tasks(
+            page=1, size=10, tasks_list=self.tasks
+        )
+        assert len(tasks) == 10
+        assert total_tasks == 30
+        assert total_pages == 3
+
+    def test_get_tasks_returns_correct_page_two(self):
+        tasks, total_tasks, total_pages = get_tasks(
+            page=2, size=10, tasks_list=self.tasks
+        )
+        assert len(tasks) == 10
+        assert total_tasks == 30
+        assert total_pages == 3
+
+    def test_get_tasks_should_raise_error_for_negative_page(self):
+        with pytest.raises(ValueError, match="Invalid page size"):
+            get_tasks(page=-1, size=10, tasks_list=self.tasks)
+
+    def test_get_tasks_should_raise_error_for_zero_page(self):
+        with pytest.raises(ValueError, match="Invalid page size"):
+            get_tasks(page=0, size=10, tasks_list=self.tasks)
+
+    def test_get_tasks_should_return_empty_list_for_too_much_page(
+        self, capsys
+    ):
+        result = get_tasks(page=5, size=10, tasks_list=self.tasks)
+        print(result)
+
+        assert result == ([], 30, 3)
+        captured = capsys.readouterr()
+        assert "Page 5 n'existe pas. Total de pages: 3" in captured.out
+
+    def test_get_tasks_should_return_empty_list_for_empty_file(self, capsys):
+        tasks_list = []
+        result = get_tasks(tasks_list=tasks_list)
+        assert result == ([], 0, 0)
+        captured = capsys.readouterr()
+        assert "Total de tâches: 0" in captured.out
+        assert "Total de pages: 0" in captured.out
