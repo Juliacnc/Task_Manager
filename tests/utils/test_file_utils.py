@@ -1,12 +1,16 @@
 import json
 from src.tasks_manager.utils.file_utils import _load_tasks, _save_tasks
+from pathlib import Path
 
 
 class TestLoadTasks:
     def test_load_existing_file_returns_list(self):
         data = [{"id": 1, "title": "Tâche test"}]
-        file_path = "tests/data/tasks.json"
-        file_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        file_path = Path("./tests/data/tasks.json")
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_path.write_text(
+            json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
 
         loaded = _load_tasks(str(file_path))
 
@@ -30,7 +34,15 @@ class TestLoadTasks:
 class TestSaveTasks:
     def test_save_tasks_writes_file(self, tmp_path):
         file_path = tmp_path / "saved.json"
-        tasks = [{"id": 42, "title": "À sauvegarder", "description": "", "status": "TODO", "created_at": "2024-01-01T10:00:00"}]
+        tasks = [
+            {
+                "id": 42,
+                "title": "À sauvegarder",
+                "description": "",
+                "status": "TODO",
+                "created_at": "2024-01-01T10:00:00",
+            }
+        ]
 
         _save_tasks(tasks, str(file_path))
 
@@ -43,7 +55,15 @@ class TestSaveTasks:
         file_path = tmp_path / "overwrite.json"
         file_path.write_text("n'importe quoi", encoding="utf-8")
 
-        tasks = [{"id": 99, "title": "Réécriture", "description": "", "status": "DONE", "created_at": "2024-01-01T10:00:00"}]
+        tasks = [
+            {
+                "id": 99,
+                "title": "Réécriture",
+                "description": "",
+                "status": "DONE",
+                "created_at": "2024-01-01T10:00:00",
+            }
+        ]
 
         _save_tasks(tasks, str(file_path))
 
