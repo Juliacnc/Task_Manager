@@ -3,6 +3,7 @@
 import sys
 import os
 import pytest
+from unittest.mock import patch
 from datetime import datetime
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -12,11 +13,16 @@ from src.task_manager import (
     create_task,
     change_task_status,
     TaskValidationError,
+    TaskNotFoundError,
     _save_tasks,
     get_task_by_id,
     modify_task,
     delete_task,
+    search_tasks,
+    filter_tasks_by_status,
+    sorted_task,
 )
+
 
 class TestTaskManager:
     def setup_method(self):
@@ -47,7 +53,7 @@ class TestTaskManager:
 
     def test_get_task_by_id_raises_error_for_invalid_id(self):
         with pytest.raises(
-            ValueError, match="Tâche avec l'ID 999 non trouvée."
+            TaskNotFoundError, match="Tâche avec l'ID 999 non trouvée."
         ):
             get_task_by_id(999, tasks_list=self.initial_tasks)
 
@@ -82,7 +88,8 @@ class TestTaskManager:
     def test_create_task_raises_if_title_too_long(self):
         long_title = "T" * 101
         with pytest.raises(
-            TaskValidationError, match="Title cannot exceed 100 characters"
+            TaskValidationError,
+            match="Le titre ne peut pas dépasser 100 caractères",
         ):
             create_task(long_title, tasks_list=self.initial_tasks)
 
@@ -90,7 +97,7 @@ class TestTaskManager:
         long_desc = "D" * 501
         with pytest.raises(
             TaskValidationError,
-            match="Description cannot exceed 500 characters",
+            match="La description ne peut pas dépasser 500 caractères",
         ):
             create_task(
                 "Titre valide",
@@ -138,7 +145,8 @@ class TestTaskManager:
     def test_modify_task_updates_with_too_long_title(self):
         long_title = "T" * 101
         with pytest.raises(
-            TaskValidationError, match="Title cannot exceed 100 characters"
+            TaskValidationError,
+            match="Le titre ne peut pas dépasser 100 caractères",
         ):
             modify_task(
                 task_id=1,
@@ -150,7 +158,7 @@ class TestTaskManager:
         long_description = "D" * 501
         with pytest.raises(
             TaskValidationError,
-            match="Description cannot exceed 500 characters",
+            match="La description ne peut pas dépasser 500 caractères",
         ):
             modify_task(
                 task_id=1,
@@ -160,7 +168,7 @@ class TestTaskManager:
 
     def test_modify_task_raise_error_for_invalid_id(self):
         with pytest.raises(
-            ValueError, match="Tâche avec l'ID 999 non trouvée."
+            TaskNotFoundError, match="Tâche avec l'ID 999 non trouvée."
         ):
             modify_task(
                 task_id=999,
@@ -182,7 +190,9 @@ class TestTaskManager:
             )
 
     def test_modify_task_error_if_title_empty(self):
-        with pytest.raises(TaskValidationError, match="Title is required"):
+        with pytest.raises(
+            TaskValidationError, match="Le titre est obligatoire"
+        ):
             modify_task(task_id=1, title="   ", tasks_list=self.initial_tasks)
 
     # --- Fin tests US9 ---
@@ -197,12 +207,14 @@ class TestTaskManager:
     def test_update_status_invalid_status(self):
         with pytest.raises(
             TaskValidationError,
-            match="Invalid status. Allowed values: TODO, ONGOING, DONE",
+            match="Statut invalide. Valeurs autorisées : TODO, ONGOING, DONE",
         ):
             change_task_status(1, "INVALID", tasks_list=self.initial_tasks)
 
     def test_update_status_nonexistent_task(self):
-        with pytest.raises(Exception, match="Task not found"):
+        with pytest.raises(
+            Exception, match="Tâche avec l'ID 999 non trouvée."
+        ):
             change_task_status(999, "TODO", tasks_list=self.initial_tasks)
 
     def test_delete_existing_task(self):
@@ -213,7 +225,9 @@ class TestTaskManager:
         assert len(tasks_after) == len(tasks_before) - 1
 
     def test_delete_nonexistent_task_raises(self):
-        with pytest.raises(TaskValidationError, match="Task not found"):
+        with pytest.raises(
+            TaskNotFoundError, match="Tâche avec l'ID 9999 non trouvée."
+        ):
             delete_task(9999, tasks_list=self.initial_tasks)
 
     def test_get_tasks_returns_only_ten_tasks_page_one(self):
@@ -275,3 +289,280 @@ class TestTaskManager:
         captured = capsys.readouterr()
         assert "Total de tâches: 0" in captured.out
         assert "Total de pages: 0" in captured.out
+
+
+class TestSearchTasks:
+    def setup_method(self):
+        self.tasks = [
+            {
+                "id": 1,
+                "title": "Faire les courses",
+                "description": "Acheter du lait",
+                "status": "TODO",
+                "created_at": "2024-01-01T10:00:00",
+            },
+            {
+                "id": 2,
+                "title": "Appeler le docteur",
+                "description": "Rendez-vous lundi",
+                "status": "DONE",
+                "created_at": "2024-01-02T10:00:00",
+            },
+            {
+                "id": 3,
+                "title": "Faire le ménage",
+                "description": "Passer l'aspirateur",
+                "status": "TODO",
+                "created_at": "2024-01-03T10:00:00",
+            },
+            {
+                "id": 4,
+                "title": "Courses de Noël",
+                "description": "Acheter des cadeaux",
+                "status": "ONGOING",
+                "created_at": "2024-01-04T10:00:00",
+            },
+            {
+                "id": 5,
+                "title": "Finir projet",
+                "description": "Rendu avant la fin du mois",
+                "status": "TODO",
+                "created_at": "2024-01-05T10:00:00",
+            },
+        ]
+
+    @patch("src.task_manager.get_tasks")
+    def test_search_by_title(self, mock_get_tasks):
+        filtered = [
+            t
+            for t in self.tasks
+            if "courses" in t["title"].lower()
+            or "courses" in t["description"].lower()
+        ]
+        # Vérif utile (tu peux aussi l'enlever une fois sûr)
+        assert {t["id"] for t in filtered} == {1, 4}
+
+        # Simule ce que get_tasks retournerait sur cette liste filtrée
+        mock_get_tasks.return_value = (filtered, len(filtered), 1)
+
+        # Appel réel de search_tasks
+        results, total, pages = search_tasks(
+            "courses", page=1, size=10, tasks_list=self.tasks
+        )
+
+        # Vérifications
+        assert total == 2
+        assert {task["id"] for task in results} == {1, 4}
+
+    @patch("src.task_manager.get_tasks")
+    def test_search_by_description(self, mock_get_tasks):
+        mock_get_tasks.return_value = ([self.tasks[2]], 1, 1)
+        results, total, pages = search_tasks(
+            "aspirateur", tasks_list=self.tasks
+        )
+        assert total == 1
+        assert results[0]["id"] == 3
+
+    @patch("src.task_manager.get_tasks")
+    def test_search_is_case_insensitive(self, mock_get_tasks):
+        mock_get_tasks.return_value = ([self.tasks[1]], 1, 1)
+        results, total, pages = search_tasks("DOCTEUR", tasks_list=self.tasks)
+        assert total == 1
+        assert results[0]["id"] == 2
+
+    @patch("src.task_manager.get_tasks")
+    def test_search_empty_keyword_returns_all(self, mock_get_tasks):
+        mock_get_tasks.return_value = (self.tasks, len(self.tasks), 1)
+        results, total, pages = search_tasks("", tasks_list=self.tasks)
+        assert total == len(self.tasks)
+        assert len(results) == len(self.tasks)
+
+    @patch("src.task_manager.get_tasks")
+    def test_search_pagination(self, mock_get_tasks):
+        # simulate pagination: page 1 returns [task1, task2], page 2 returns [task3]
+        mock_get_tasks.side_effect = [
+            ([self.tasks[0], self.tasks[1]], 3, 2),
+            ([self.tasks[2]], 3, 2),
+        ]
+        results1, total1, pages1 = search_tasks(
+            "t", page=1, size=2, tasks_list=self.tasks
+        )
+        results2, total2, pages2 = search_tasks(
+            "t", page=2, size=2, tasks_list=self.tasks
+        )
+        assert results1 != results2
+        assert len(results1) == 2
+        assert len(results2) == 1
+
+    @patch("src.task_manager.get_tasks")
+    def test_search_page_out_of_bounds_returns_empty(self, mock_get_tasks):
+        mock_get_tasks.return_value = ([], 2, 1)
+        results, total, pages = search_tasks(
+            "courses", page=10, size=2, tasks_list=self.tasks
+        )
+        assert results == []
+
+
+class TestFilterTasksByStatus:
+    def setup_method(self):
+        self.tasks = [
+            {
+                "id": 1,
+                "title": "Tâche 1",
+                "description": "",
+                "status": "TODO",
+                "created_at": "2024-01-01T10:00:00",
+            },
+            {
+                "id": 2,
+                "title": "Tâche 2",
+                "description": "",
+                "status": "DONE",
+                "created_at": "2024-01-02T10:00:00",
+            },
+            {
+                "id": 3,
+                "title": "Tâche 3",
+                "description": "",
+                "status": "TODO",
+                "created_at": "2024-01-03T10:00:00",
+            },
+            {
+                "id": 4,
+                "title": "Tâche 4",
+                "description": "",
+                "status": "ONGOING",
+                "created_at": "2024-01-04T10:00:00",
+            },
+            {
+                "id": 5,
+                "title": "Tâche 5",
+                "description": "",
+                "status": "TODO",
+                "created_at": "2024-01-05T10:00:00",
+            },
+            {
+                "id": 6,
+                "title": "Tâche 6",
+                "description": "",
+                "status": "TODO",
+                "created_at": "2024-01-06T10:00:00",
+            },
+        ]
+
+    @patch("src.task_manager.get_tasks")
+    def test_filter_tasks_by_status_valid(self, mock_get_tasks):
+        filtered = [t for t in self.tasks if t["status"] == "TODO"]
+        mock_get_tasks.return_value = (filtered, len(filtered), 1)
+
+        tasks, total, total_pages = filter_tasks_by_status(
+            "TODO", tasks_list=self.tasks, page=1, size=10
+        )
+
+        assert all(t["status"] == "TODO" for t in tasks)
+        assert total == len(filtered)
+        assert total_pages == 1
+
+    @patch("src.task_manager.get_tasks")
+    def test_filter_tasks_by_status_empty_result(self, mock_get_tasks):
+        mock_get_tasks.return_value = ([], 0, 0)
+
+        tasks, total, total_pages = filter_tasks_by_status(
+            "ONGOING",
+            tasks_list=[t for t in self.tasks if t["status"] != "ONGOING"],
+            page=1,
+            size=10,
+        )
+
+        assert tasks == []
+        assert total == 0
+        assert total_pages == 0
+
+    def test_filter_tasks_by_status_invalid_status(self):
+        with pytest.raises(ValueError, match="Invalid filter status"):
+            filter_tasks_by_status(
+                "INVALID_STATUS", tasks_list=self.tasks, page=1, size=10
+            )
+
+    @patch("src.task_manager.get_tasks")
+    def test_filter_tasks_by_status_pagination(self, mock_get_tasks):
+        todos = [t for t in self.tasks if t["status"] == "TODO"]
+
+        # Simuler la pagination en 2 pages de 2 tâches
+        mock_get_tasks.side_effect = [
+            (todos[:2], len(todos), 2),  # Page 1
+            (todos[2:], len(todos), 2),  # Page 2
+        ]
+
+        tasks_page_1, total, total_pages = filter_tasks_by_status(
+            "TODO", tasks_list=self.tasks, page=1, size=2
+        )
+        tasks_page_2, _, _ = filter_tasks_by_status(
+            "TODO", tasks_list=self.tasks, page=2, size=2
+        )
+
+        assert tasks_page_1 != tasks_page_2
+        assert total == len(todos)
+        assert total_pages == 2
+
+
+class TestSortedTask:
+    def setup_method(self):
+        self.tasks = [
+            {
+                "id": 1,
+                "title": "Tâche A",
+                "description": "",
+                "status": "TODO",
+                "created_at": "2024-01-01T10:00:00",
+            },
+            {
+                "id": 2,
+                "title": "Tâche B",
+                "description": "",
+                "status": "DONE",
+                "created_at": "2024-01-02T10:00:00",
+            },
+            {
+                "id": 3,
+                "title": "Tâche C",
+                "description": "",
+                "status": "ONGOING",
+                "created_at": "2024-01-03T10:00:00",
+            },
+        ]
+
+    def test_sorted_task_by_title(self):
+        sorted_tasks = sorted_task(
+            tasks_list=self.tasks, sort_by="title", ascending=False
+        )
+        assert sorted_tasks[0]["title"] == "Tâche C"
+        assert sorted_tasks[1]["title"] == "Tâche B"
+        assert sorted_tasks[2]["title"] == "Tâche A"
+
+    def test_sorted_task_by_title_descending(self):
+        sorted_tasks = sorted_task(
+            tasks_list=self.tasks, sort_by="title", ascending=False
+        )
+        assert sorted_tasks[0]["title"] == "Tâche C"
+        assert sorted_tasks[1]["title"] == "Tâche B"
+        assert sorted_tasks[2]["title"] == "Tâche A"
+
+    def test_sorted_task_by_created_at_descending(self):
+        sorted_tasks = sorted_task(
+            tasks_list=self.tasks, sort_by="created_at", ascending=False
+        )
+        assert sorted_tasks[0]["id"] == 3
+        assert sorted_tasks[1]["id"] == 2
+        assert sorted_tasks[2]["id"] == 1
+
+    def test_sorted_task_by_status(self):
+        sorted_tasks = sorted_task(tasks_list=self.tasks, sort_by="status")
+        print(sorted_tasks)
+        assert sorted_tasks[0]["status"] == "DONE"
+        assert sorted_tasks[1]["status"] == "ONGOING"
+        assert sorted_tasks[2]["status"] == "TODO"
+
+    def test_sorted_task_invalid_sort_by(self):
+        with pytest.raises(ValueError, match="Invalid sort criteria."):
+            sorted_task(tasks_list=self.tasks, sort_by="invalid_field")

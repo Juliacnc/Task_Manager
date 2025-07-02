@@ -3,69 +3,25 @@
 import click
 from rich.console import Console
 from rich.table import Table
-from datetime import datetime
 
 from task_manager import (
     get_tasks,
+    filter_tasks_by_status,
     create_task,
-    change_task_status,
-    delete_task,
     TaskValidationError,
     get_task_by_id,
     modify_task,
     TaskNotFoundError,
-    _load_tasks,
+    search_tasks,  # <-- ajout de la fonction search_tasks
     _save_tasks,
+    _load_tasks,
+    sorted_task,
 )
 
 console = Console()
 
 # Chargement unique au démarrage
 tasks_list = _load_tasks(data_file="tasks.json")
-
-
-def get_tasks_sorted_filtered(
-    page=1,
-    size=10,
-    sort_by="created_at",
-    order="desc",
-    status_filter=None,
-    tasks_list=None,
-):
-    if tasks_list is None:
-        tasks_list = []
-
-    tasks = tasks_list
-
-    # Filtrer par statut si demandé
-    if status_filter:
-        if status_filter not in ["TODO", "ONGOING", "DONE"]:
-            raise TaskValidationError("Invalid status filter")
-        tasks = [t for t in tasks if t["status"] == status_filter]
-
-    valid_sort = {"created_at", "title", "status"}
-    if sort_by not in valid_sort:
-        raise TaskValidationError("Invalid sort criteria")
-
-    reverse = order == "desc"
-
-    if sort_by == "status":
-        order_map = {"TODO": 0, "ONGOING": 1, "DONE": 2}
-        tasks.sort(key=lambda t: order_map[t["status"]], reverse=reverse)
-    elif sort_by == "created_at":
-        tasks.sort(key=lambda t: datetime.fromisoformat(t["created_at"]), reverse=reverse)
-    else:  # tri alphabétique sur titre
-        tasks.sort(key=lambda t: t["title"].lower(), reverse=reverse)
-
-    total_tasks = len(tasks)
-    total_pages = (total_tasks + size - 1) // size if size else 1
-
-    if page < 1 or (page > total_pages and total_pages != 0):
-        raise ValueError(f"Page {page} does not exist (max {total_pages})")
-
-    start = (page - 1) * size
-    end = start + size
-    return tasks[start:end], total_tasks, total_pages
 
 
 @click.group()
@@ -78,46 +34,30 @@ def cli():
 @click.option("--page", default=1, help="Numéro de page (commence à 1)")
 @click.option("--size", default=10, help="Nombre de tâches par page")
 @click.option(
-    "--sort-by",
+    "--sort_by",
     default="created_at",
-    type=click.Choice(["created_at", "title", "status"]),
-    help="Critère de tri",
+    help="Champ par lequel trier les tâches",
 )
 @click.option(
-    "--order",
-    default="desc",
-    type=click.Choice(["asc", "desc"]),
-    help="Ordre du tri (ascendant ou descendant)",
+    "--ascending",
+    is_flag=True,
+    default=False,
+    help="Trier les tâches par ordre croissant (par défaut : décroissant)",
 )
-@click.option(
-    "--status",
-    default=None,
-    type=click.Choice(["TODO", "ONGOING", "DONE"]),
-    help="Filtrer par statut (optionnel)",
-)
-def list(page, size, sort_by, order, status):
-    """Lister les tâches, avec options de tri et filtre"""
-    try:
-        tasks, total_tasks, total_pages = get_tasks_sorted_filtered(
-            page=page,
-            size=size,
-            sort_by=sort_by,
-            order=order,
-            status_filter=status,
-            tasks_list=tasks_list,
-        )
-    except TaskValidationError as e:
-        console.print(f"Erreur : {e}", style="red")
-        return
-    except ValueError as e:
-        console.print(f"Erreur : {e}", style="red")
-        return
+def list(page, size, sort_by, ascending, tasks_list=tasks_list):
+    """Lister les tâches"""
+    sorted_tasks = sorted_task(
+        tasks_list=tasks_list, sort_by=sort_by, ascending=ascending
+    )
+    tasks, total_tasks, total_pages = get_tasks(
+        page=page, size=size, tasks_list=sorted_tasks
+    )
 
     if not tasks:
         console.print("Aucune tâche trouvée.", style="yellow")
         return
 
-    table = Table(title="Liste des tâches")
+    table = Table(title=f"Liste des tâches (page {page}/{total_pages})")
     table.add_column("ID", style="cyan", no_wrap=True)
     table.add_column("Statut", style="green")
     table.add_column("Titre", style="white")
@@ -132,8 +72,56 @@ def list(page, size, sort_by, order, status):
             task["description"],
             task["created_at"],
         )
-    console.print(f"Page {page}/{total_pages} - Total de tâches : {total_tasks}")
 
+    console.print(table)
+    console.print(
+        f"Page {page} sur {total_pages} - Total de tâches : {total_tasks}",
+        style="bold",
+    )
+
+
+@click.option(
+    "--status",
+    required=True,
+    type=click.Choice(["TODO", "ONGOING", "DONE"], case_sensitive=True),
+)
+@click.option("--page", default=1, help="Numéro de page (commence à 1)")
+@click.option("--size", default=10, help="Nombre de tâches par page")
+@cli.command()
+def filter(status, page, size, tasks_list=tasks_list):
+    """Lister les tâches filtrées par statut"""
+    try:
+        tasks, total_tasks, total_pages = filter_tasks_by_status(
+            status=status, page=page, size=size, tasks_list=tasks_list
+        )
+    except ValueError as e:
+        console.print(f"Erreur : {e}", style="red")
+        return
+
+    if not tasks:
+        console.print(
+            f"Aucune tâche avec le statut '{status}' trouvée.", style="yellow"
+        )
+        return
+
+    table = Table(title=f"Tâches avec statut '{status}'")
+    table.add_column("ID", style="cyan", no_wrap=True)
+    table.add_column("Statut", style="green")
+    table.add_column("Titre", style="white")
+    table.add_column("Description", style="dim")
+    table.add_column("Créée le", style="magenta")
+
+    for task in tasks:
+        table.add_row(
+            str(task["id"]),
+            task["status"],
+            task["title"],
+            task["description"],
+            task["created_at"],
+        )
+    console.print(
+        f"Page {page}/{total_pages} - Total de tâches : {total_tasks}"
+    )
     console.print(table)
 
 
@@ -187,7 +175,12 @@ def modify(task_id, title, description):
 @click.argument("task_id", type=int)
 def show(task_id):
     """Afficher une tâche par son ID"""
-    task = get_task_by_id(task_id)
+    try:
+        task = get_task_by_id(task_id)
+    except TaskNotFoundError as e:
+        console.print(f"Erreur : {e}", style="red")
+        return
+
     table = Table(title=f"Tâche {task['id']}")
     table.add_column("Champ", style="cyan")
     table.add_column("Valeur", style="white")
@@ -223,9 +216,7 @@ def show(task_id):
     help="Modification du champ 'created_at' non autorisée",
     required=False,
 )
-def modify(
-    task_id, title, description, id, status, created_at
-):
+def modify(task_id, title, description, id, status, created_at):
     """Modifier une tâche existante"""
     global tasks_list
     forbidden_fields = []
@@ -238,7 +229,8 @@ def modify(
     if forbidden_fields:
         console.print(
             f"Erreur : Seuls les champs 'title' et 'description' "
-            f"peuvent être modifiés. Champs non autorisés détectés : {', '.join(forbidden_fields)}",
+            f"peuvent être modifiés. "
+            f"Champs non autorisés détectés : {', '.join(forbidden_fields)}",
             style="red",
         )
         return
@@ -257,6 +249,52 @@ def modify(
         console.print(f"Erreur : {e}", style="red")
     except TaskValidationError as e:
         console.print(f"Erreur de validation : {e}", style="red")
+
+
+@cli.command()
+@click.argument("keyword", type=str)
+@click.option("--page", default=1, help="Numéro de page (commence à 1)")
+@click.option("--size", default=20, help="Nombre de tâches par page")
+def search(keyword, page, size, tasks_list=tasks_list):
+    """Rechercher des tâches par mot clé dans le titre ou la description"""
+    try:
+        tasks, total, total_pages = search_tasks(
+            keyword, page=page, size=size, tasks_list=tasks_list
+        )
+    except ValueError as e:
+        console.print(f"Erreur : {e}", style="red")
+        return
+
+    if not tasks:
+        console.print(
+            f"Aucune tâche trouvée pour le mot clé : '{keyword}'",
+            style="yellow",
+        )
+        return
+
+    table = Table(
+        title=f"Résultats de recherche pour '{keyword}' (page {page}/{total_pages})"
+    )
+    table.add_column("ID", style="cyan", no_wrap=True)
+    table.add_column("Statut", style="green")
+    table.add_column("Titre", style="white")
+    table.add_column("Description", style="dim")
+    table.add_column("Créée le", style="magenta")
+
+    for task in tasks:
+        table.add_row(
+            str(task["id"]),
+            task["status"],
+            task["title"],
+            task["description"],
+            task["created_at"],
+        )
+
+    console.print(table)
+    console.print(
+        f"Page {page} sur {total_pages} - Total de tâches trouvées : {total}",
+        style="bold",
+    )
 
 
 if __name__ == "__main__":

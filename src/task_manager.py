@@ -25,11 +25,13 @@ DEFAULT_TASKS = [
 
 class TaskValidationError(Exception):
     """Exception personnalisée pour les erreurs de validation"""
+
     pass
 
 
 class TaskNotFoundError(Exception):
     """Exception personnalisée pour tâche non trouvée"""
+
     pass
 
 
@@ -38,16 +40,17 @@ VALID_STATUSES = {"TODO", "ONGOING", "DONE"}
 
 def _load_tasks(data_file=DATA_FILE) -> List[Dict]:
     """Charge les tâches depuis le fichier JSON"""
+    print(os.path.exists(data_file))
     if os.path.exists(data_file):
-        try:
-            with open(data_file, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except (json.JSONDecodeError, IOError):
-            _save_tasks(DEFAULT_TASKS, data_file)
-            return DEFAULT_TASKS.copy()
-    else:
-        _save_tasks(DEFAULT_TASKS, data_file)
-        return DEFAULT_TASKS.copy()
+        # try:
+        with open(data_file, "r", encoding="utf-8") as f:
+            return json.load(f)
+    # except (json.JSONDecodeError, IOError):
+    #     _save_tasks(DEFAULT_TASKS)
+    #     return DEFAULT_TASKS.copy()
+    # else:
+    #     _save_tasks(DEFAULT_TASKS)
+    #     return DEFAULT_TASKS.copy()
 
 
 def _save_tasks(tasks_to_save: List[Dict], data_file=DATA_FILE):
@@ -61,23 +64,52 @@ def _save_tasks(tasks_to_save: List[Dict], data_file=DATA_FILE):
 
 def get_tasks(
     page: int = 1, size: int = 20, tasks_list: List[Dict] = None
-) -> Tuple[List[Dict], int, int]:
-    """Récupère une page de tâches de la liste en mémoire"""
-    if tasks_list is None:
-        tasks_list = []
-
+) -> List[Dict]:
+    """Récupère la liste des tâches"""
+    # tasks = _load_tasks(data_file=data_file)
     total_tasks = len(tasks_list)
     total_pages = (total_tasks + size - 1) // size if size else 1
 
-    if total_tasks == 0:
+    if not tasks_list:
+        print("Total de tâches: {}".format(total_tasks))
+        print("Total de pages: {}".format(total_pages))
         return [], total_tasks, total_pages
 
-    if page < 1 or page > total_pages:
-        raise ValueError(f"Page {page} n'existe pas. Total de pages: {total_pages}")
+    if page > total_pages:
+        print(f"Page {page} n'existe pas. Total de pages: {total_pages}")
+        return [], total_tasks, total_pages
+    if page < 1:
+        raise ValueError("Invalid page size")
 
     start = (page - 1) * size
     end = start + size
     return tasks_list[start:end], total_tasks, total_pages
+
+
+def filter_tasks_by_status(
+    status: str,
+    tasks_list: List[Dict],
+    page: int = 1,
+    size: int = 20,
+) -> Tuple[List[Dict], int, int]:
+    """Filtre les tâches par statut avec pagination.
+
+    :param status: Le statut à filtrer ("TODO", "ONGOING", "DONE")
+    :param page: Numéro de la page (1-based)
+    :param size: Nombre de tâches par page
+    :param data_file: Fichier de données JSON
+    :return: (liste des tâches filtrées pour la page, total de tâches filtrées, total de pages)
+    """
+    status = status.upper()
+    if status not in VALID_STATUSES:
+        raise ValueError("Invalid filter status")
+
+    filtered_tasks = [task for task in tasks_list if task["status"] == status]
+
+    task_range, total_tasks, total_pages = get_tasks(
+        page=page, size=size, tasks_list=filtered_tasks
+    )
+    return task_range, total_tasks, total_pages
 
 
 def create_task(
@@ -93,11 +125,15 @@ def create_task(
     description = description.strip()
 
     if not title:
-        raise TaskValidationError("Le titre est obligatoire")
+        raise TaskValidationError("Title is required")
     if len(title) > 100:
-        raise TaskValidationError("Le titre ne peut pas dépasser 100 caractères")
+        raise TaskValidationError(
+            "Le titre ne peut pas dépasser 100 caractères"
+        )
     if len(description) > 500:
-        raise TaskValidationError("La description ne peut pas dépasser 500 caractères")
+        raise TaskValidationError(
+            "La description ne peut pas dépasser 500 caractères"
+        )
 
     next_id = max([task["id"] for task in tasks_list], default=0) + 1
 
@@ -146,12 +182,16 @@ def modify_task(
                 if title == "":
                     raise TaskValidationError("Le titre est obligatoire")
                 if len(title) > 100:
-                    raise TaskValidationError("Le titre ne peut pas dépasser 100 caractères")
+                    raise TaskValidationError(
+                        "Le titre ne peut pas dépasser 100 caractères"
+                    )
                 task["title"] = title
             if description is not None:
                 description = description.strip()
                 if len(description) > 500:
-                    raise TaskValidationError("La description ne peut pas dépasser 500 caractères")
+                    raise TaskValidationError(
+                        "La description ne peut pas dépasser 500 caractères"
+                    )
                 task["description"] = description
 
             return task, tasks_list
@@ -184,3 +224,58 @@ def delete_task(task_id: int, tasks_list: List[Dict]) -> List[Dict]:
         raise TaskNotFoundError(f"Tâche avec l'ID {task_id} non trouvée.")
 
     return updated_tasks
+
+
+def search_tasks(keyword, tasks_list, page=1, size=10) -> List[Dict]:
+    keyword = keyword.strip().lower()
+    if keyword:
+        filtered = [
+            t
+            for t in tasks_list
+            if keyword in t["title"].lower()
+            or keyword in t["description"].lower()
+        ]
+    else:
+        filtered = tasks_list
+    task_range, total_tasks, total_pages = get_tasks(
+        page=page, size=size, tasks_list=filtered
+    )
+    return task_range, total_tasks, total_pages
+
+
+# def sorted_task(
+#     tasks_list: List[Dict],
+#     sort_by: str = "created_at",
+#     ascending: bool = True,
+# ) -> List[Dict]:
+#     """Retourne les tâches triées par un champ spécifique"""
+#     if sort_by not in ["id", "title", "status", "created_at"]:
+#         raise ValueError("Invalid sort criteria.")
+#     if sort_by == "status":
+#         sorted_status = {
+#             "TODO": 0,
+#             "ONGOING": 1,
+#             "DONE": 2,
+#         }
+#         tasks_list.sort(
+#             key=lambda x: sorted_status[x[sort_by]], reverse=not ascending
+#         )
+#         return tasks_list
+
+
+#     return sorted(tasks_list, key=lambda x: x[sort_by], reverse=not ascending)
+def sorted_task(tasks_list, sort_by="created_at", ascending=True):
+    if sort_by not in {"title", "created_at", "status"}:
+        raise ValueError("Invalid sort criteria.")
+    if sort_by == "status":
+        status_order = {"DONE": 0, "ONGOING": 1, "TODO": 2}
+        return sorted(
+            tasks_list,
+            key=lambda t: status_order.get(t["status"], 99),
+            reverse=not ascending,
+        )
+    return sorted(
+        tasks_list,
+        key=lambda t: t[sort_by],
+        reverse=not ascending,
+    )
