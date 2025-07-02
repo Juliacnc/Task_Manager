@@ -1,3 +1,5 @@
+"""Module to test data manager functions in Task Manager application."""
+
 import pytest
 from datetime import datetime
 

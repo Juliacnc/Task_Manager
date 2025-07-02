@@ -1,3 +1,5 @@
+"""Module to test file utilities in Task Manager application."""
+
 import json
 from src.tasks_manager.utils.file_utils import _load_tasks, _save_tasks
 from pathlib import Path

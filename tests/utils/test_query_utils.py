@@ -1,3 +1,5 @@
+"""Module to test query utilities in Task Manager application."""
+
 import pytest
 from src.tasks_manager.utils.query_utils import (
     search_tasks,
