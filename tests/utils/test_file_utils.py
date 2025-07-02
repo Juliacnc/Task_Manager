@@ -1,55 +1,52 @@
 import json
 import pytest
-from unittest.mock import mock_open, patch
-
 from src.tasks_manager.utils.data_manager import _load_tasks, _save_tasks
 
 
 class TestLoadTasks:
-    @patch("src.tasks_manager.utils.data_manager.os.path.exists")
-    @patch("src.tasks_manager.utils.data_manager.open", new_callable=mock_open, read_data="[]")
-    def test_load_existing_file_returns_list(self, mock_file, mock_exists):
-        mock_exists.return_value = True
+    def test_load_existing_file_returns_list(self):
+        data = [{"id": 1, "title": "Tâche test"}]
+        file_path = "tests/data/tasks.json"
+        file_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
-        result = _load_tasks("fakefile.json")
+        loaded = _load_tasks(str(file_path))
 
-        assert result == []
-        mock_file.assert_called_once_with("fakefile.json", "r", encoding="utf-8")
+        assert loaded == data
 
-    @patch("src.tasks_manager.utils.data_manager.os.path.exists")
-    @patch("src.tasks_manager.utils.data_manager.open", new_callable=mock_open)
-    def test_load_creates_file_if_missing(self, mock_file, mock_exists):
-        mock_exists.return_value = False
+    def test_load_creates_file_if_missing(self, tmp_path):
+        file_path = tmp_path / "missing.json"
 
-        # Simuler la lecture d'un fichier vide après création
-        mock_file().read.return_value = "[]"
+        assert not file_path.exists()
 
-        result = _load_tasks("newfile.json")
+        loaded = _load_tasks(str(file_path))
 
-        assert result == []
-        assert mock_file.call_count >= 2  # Une écriture + une lecture
-        mock_file.assert_any_call("newfile.json", "w", encoding="utf-8")
-        mock_file.assert_any_call("newfile.json", "r", encoding="utf-8")
+        assert loaded == []
+        assert file_path.exists()
+
+        # Vérifier que le contenu du fichier est une liste vide
+        content = json.loads(file_path.read_text(encoding="utf-8"))
+        assert content == []
 
 
 class TestSaveTasks:
-    @patch("src.tasks_manager.utils.data_manager.open", new_callable=mock_open)
-    def test_save_tasks_correctly_writes_json(self, mock_file):
-        tasks = [{"id": 1, "title": "Tâche", "status": "TODO", "description": "", "created_at": "2024-01-01T10:00:00"}]
+    def test_save_tasks_writes_file(self, tmp_path):
+        file_path = tmp_path / "saved.json"
+        tasks = [{"id": 42, "title": "À sauvegarder", "description": "", "status": "TODO", "created_at": "2024-01-01T10:00:00"}]
 
-        _save_tasks(tasks, "savefile.json")
+        _save_tasks(tasks, str(file_path))
 
-        mock_file.assert_called_once_with("savefile.json", "w", encoding="utf-8")
+        assert file_path.exists()
 
-        handle = mock_file()
-        written_data = "".join(call.args[0] for call in handle.write.call_args_list)
-        assert json.loads(written_data) == tasks
+        saved = json.loads(file_path.read_text(encoding="utf-8"))
+        assert saved == tasks
 
-    @patch("src.tasks_manager.utils.data_manager.open", side_effect=IOError)
-    def test_save_tasks_handles_ioerror(self, mock_file):
-        tasks = [{"id": 1, "title": "Tâche"}]
+    def test_save_tasks_overwrites_existing_file(self, tmp_path):
+        file_path = tmp_path / "overwrite.json"
+        file_path.write_text("n'importe quoi", encoding="utf-8")
 
-        try:
-            _save_tasks(tasks, "errorfile.json")
-        except Exception:
-            pytest.fail("L'appel à _save_tasks ne doit pas lever d'exception en cas d'IOError.")
+        tasks = [{"id": 99, "title": "Réécriture", "description": "", "status": "DONE", "created_at": "2024-01-01T10:00:00"}]
+
+        _save_tasks(tasks, str(file_path))
+
+        saved = json.loads(file_path.read_text(encoding="utf-8"))
+        assert saved == tasks
