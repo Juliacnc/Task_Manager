@@ -1,6 +1,6 @@
 import json
 import pytest
-from src.tasks_manager.utils.data_manager import _load_tasks, _save_tasks
+from src.tasks_manager.utils.file_utils import _load_tasks, _save_tasks
 
 
 class TestLoadTasks:
