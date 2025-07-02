@@ -1,6 +1,4 @@
 import pytest
-
-
 from src.tasks_manager.utils.query_utils import (
     search_tasks,
     filter_tasks_by_status,
