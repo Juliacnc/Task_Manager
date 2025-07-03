@@ -42,6 +42,7 @@ def display_tasks(
     table.add_column("Titre", style="white")
     table.add_column("Description", style="dim", overflow="fold")
     table.add_column("Créée le", style="magenta")
+    table.add_column("Echéance", style="yellow", no_wrap=True)
 
     for task in tasks:
         table.add_row(
@@ -50,6 +51,7 @@ def display_tasks(
             task["title"],
             task["description"],
             task["created_at"],
+            task.get("deadline", "Aucune"),
         )
 
     console.print(table)
