@@ -3,6 +3,7 @@
 from typing import List, Dict
 from enum import Enum
 from src.classes.errors import TaskValidationError
+from src.tasks_manager.utils.query_utils import filter_by_id
 
 
 class Priority(Enum):
@@ -13,6 +14,29 @@ class Priority(Enum):
 
 
 DEFAULT_PRIORITY = Priority.NORMAL.name
+
+
+def task_priority(
+    task_list, task_id: int, action: str, priority: str = None
+) -> str:
+    """Manage the priority of a task in the task list."""
+    task = filter_by_id(tasks_list=task_list, task_id=task_id)
+    if action == "set":
+        return set_task_priority(task, priority)
+    elif action == "get":
+        return get_task_priority(task)
+    elif action == "sort":
+        return sort_tasks_by_priority(task_list)
+    elif action == "filter":
+        if not priority:
+            raise TaskValidationError(
+                "Priority must be provided for filtering."
+            )
+        return filter_tasks_by_priority(task_list, priority)
+    else:
+        raise TaskValidationError(
+            "Invalid action. Allowed actions: set, get, sort, filter."
+        )
 
 
 def set_task_priority(task: Dict, priority: str) -> Dict:
@@ -33,6 +57,7 @@ def get_task_priority(task: Dict) -> str:
 
 def sort_tasks_by_priority(tasks: List[Dict]) -> List[Dict]:
     """Sorts tasks by priority from highest to lowest."""
+
     def get_priority_value(task: Dict) -> int:
         return Priority[get_task_priority(task)].value
 
