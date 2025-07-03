@@ -1,6 +1,6 @@
 import pytest
 from src.classes.errors import TaskValidationError, TaskNotFoundError
-from tasks_manager.utils.task_tags import (
+from src.tasks_manager.utils.task_tags import (
     _add_tags_to_task,
     _remove_tag_from_task,
     _filter_tasks_by_tags,

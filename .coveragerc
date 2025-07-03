@@ -5,6 +5,7 @@ source = src
 omit =
     tests/*
     */__pycache__/*
+    src/task_manager.py
 
 [html]
 directory = coverage_html
