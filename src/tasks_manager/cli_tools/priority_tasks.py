@@ -13,15 +13,19 @@ from src.tasks_manager.utils.file_utils import display_tasks
 )
 @click.pass_context
 def manage_priority(ctx, task_id: int, action: str, priority: str = None):
-    task_list = ctx.obj.get("task_list")
+    tasks_list = ctx.obj["tasks_list"]
 
-    updated_task, updated_tasks_list = task_priority(
-        task_list, task_id, action, priority
-    )
+    updated_task = task_priority(tasks_list, task_id, action, priority)
+
+    # update the task in the tasks list
+    tasks_list = [
+        task if task["id"] != task_id else updated_task for task in tasks_list
+    ]
+    ctx.obj["tasks_list"] = tasks_list
 
     display_tasks(
-        updated_tasks_list,
+        [updated_task],
         page=1,
         total_pages=1,
-        total_tasks=len(updated_tasks_list),
+        total_tasks=1,
     )

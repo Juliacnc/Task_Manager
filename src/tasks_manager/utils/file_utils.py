@@ -44,6 +44,7 @@ def display_tasks(
     table.add_column("Créée le", style="magenta")
     table.add_column("Echéance", style="yellow", no_wrap=True)
     table.add_column("Tags", style="blue")
+    table.add_column("Priority", style="red")
 
     for task in tasks:
         table.add_row(
@@ -54,6 +55,7 @@ def display_tasks(
             task["created_at"],
             task.get("deadline", "Aucune"),
             ", ".join(task.get("tags", [])) if task.get("tags") else "Aucun",
+            task.get("priority", "Aucune"),
         )
 
     console.print(table)

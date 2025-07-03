@@ -20,7 +20,7 @@ def task_priority(
     task_list, task_id: int, action: str, priority: str = None
 ) -> str:
     """Manage the priority of a task in the task list."""
-    task = filter_by_id(task_list, task_id)
+    task = filter_by_id(tasks_list=task_list, task_id=task_id)
     if action == "set":
         return set_task_priority(task, priority)
     elif action == "get":
