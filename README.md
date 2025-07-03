@@ -84,3 +84,7 @@ coverage run -m pytest
 ```bash
 coverage report
 ```
+
+### Licence
+Canac Julia
+Lemos Emma
