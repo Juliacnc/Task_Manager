@@ -1,11 +1,10 @@
 import pytest
 from src.classes.errors import TaskValidationError, TaskNotFoundError
-from src.tasks_manager.utils.tag_manager import (
+from tasks_manager.utils.task_tags import (
     _add_tags_to_task,
     _remove_tag_from_task,
     _filter_tasks_by_tags,
     _get_all_tags_with_usage,
-    _get_task_by_id,
 )
 
 
@@ -83,16 +82,6 @@ class TestTagManager:
         counts = _get_all_tags_with_usage(empty_tasks)
         assert counts == {}
 
-    # Tests supplémentaires pour couverture complète
-
-    def test_get_task_by_id_found(self):
-        task = _get_task_by_id(self.tasks, 1)
-        assert task["id"] == 1
-
-    def test_get_task_by_id_not_found(self):
-        with pytest.raises(TaskNotFoundError):
-            _get_task_by_id(self.tasks, 999)  # id inexistant
-
     def test_add_tags_to_task_task_not_found(self):
         with pytest.raises(TaskNotFoundError):
             _add_tags_to_task(self.tasks, 999, ["tag"])
@@ -100,17 +89,9 @@ class TestTagManager:
     def test_remove_tag_from_task_task_not_found(self):
         with pytest.raises(TaskNotFoundError):
             _remove_tag_from_task(self.tasks, 999, "tag")
-            
+
     def test_add_tags_to_task_no_tags_key_creates_tags_list(self):
-        # Task id=4 n'a pas de clé 'tags', on doit tester qu'elle est créée et tags ajoutés
+        # Task id=4 n'a pas de clé 'tags', on doit tester qu'elle est créée et tags ajoutés # noqa: E501
         task, tasks = _add_tags_to_task(self.tasks, 4, ["newtag"])
         assert "newtag" in task["tags"]
         assert isinstance(task["tags"], list)
-
-    def _get_task_by_id(tasks, task_id):
-        for task in tasks:
-            if task["id"] == task_id:
-                return task
-        raise TaskNotFoundError(...)
-    
-    

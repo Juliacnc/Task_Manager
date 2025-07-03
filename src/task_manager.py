@@ -14,6 +14,7 @@ from src.tasks_manager.cli_tools.cli_data_manager import (
 )
 from src.tasks_manager.cli_tools.view_tasks import view_tasks
 from src.tasks_manager.cli_tools.task_sheduler import task_deadline
+from src.tasks_manager.cli_tools.tags import tags_cli
 
 
 @click.group()
@@ -41,6 +42,7 @@ task_manager.add_command(change_task_status)
 task_manager.add_command(delete_task)
 task_manager.add_command(view_tasks)
 task_manager.add_command(task_deadline)
+task_manager.add_command(tags_cli)
 
 if __name__ == "__main__":
     task_manager(obj={})
